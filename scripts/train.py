@@ -12,12 +12,17 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.cifar import get_cifar_dataset
 from src.data.federated_dataset import FederatedDatasetManager
 from src.methods.finetune import Finetune
+from src.methods.replay import LocalReplay
 from src.models.incremental_model import IncrementalNet
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train FCIL baselines.")
-    parser.add_argument("--method", default="finetune", choices=["finetune"])
+    parser.add_argument(
+        "--method",
+        default="finetune",
+        choices=["finetune", "local_replay"],
+    )
     parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100"])
     parser.add_argument(
         "--task_split_path",
@@ -42,6 +47,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output_dir", default="outputs/results")
     parser.add_argument("--run_name", default=None)
     parser.add_argument("--save_checkpoint", action="store_true")
+    parser.add_argument("--buffer_size", type=int, default=200)
+    parser.add_argument("--samples_per_task", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=1)
     return parser.parse_args()
 
 
@@ -88,16 +96,28 @@ def main() -> None:
         pretrained=args.pretrained,
     )
 
-    method = Finetune(
-        model=model,
-        dataset_manager=manager,
-        device=device,
-        num_clients=args.num_clients,
-        batch_size=args.batch_size,
-        local_epochs=args.local_epochs,
-        rounds=args.rounds,
-        lr=args.lr,
-    )
+    method_kwargs = {
+        "model": model,
+        "dataset_manager": manager,
+        "device": device,
+        "num_clients": args.num_clients,
+        "batch_size": args.batch_size,
+        "local_epochs": args.local_epochs,
+        "rounds": args.rounds,
+        "lr": args.lr,
+    }
+
+    if args.method == "finetune":
+        method = Finetune(**method_kwargs)
+    elif args.method == "local_replay":
+        method = LocalReplay(
+            **method_kwargs,
+            buffer_size=args.buffer_size,
+            samples_per_task=args.samples_per_task,
+            seed=args.seed,
+        )
+    else:
+        raise ValueError(f"Unsupported method: {args.method}")
 
     history = method.train()
 

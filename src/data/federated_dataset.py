@@ -6,10 +6,27 @@ from typing import Any
 from torch.utils.data import Dataset, Subset
 
 
+class TargetRemapDataset(Dataset):
+    """
+    Wrap a dataset and map original class labels to incremental head indices.
+    """
+
+    def __init__(self, dataset: Dataset, label_to_index: dict[int, int]) -> None:
+        self.dataset = dataset
+        self.label_to_index = label_to_index
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __getitem__(self, index: int):
+        x, y = self.dataset[index]
+        return x, self.label_to_index[int(y)]
+
+
 @dataclass
 class FederatedTaskData:
-    train_subsets: dict[str, Subset]
-    test_subset_seen: Subset
+    train_subsets: dict[str, Dataset]
+    test_subset_seen: Dataset
     task_classes: list[int]
 
 
@@ -48,6 +65,18 @@ class FederatedDatasetManager:
     def get_task_classes(self, task_id: int) -> list[int]:
         return list(self.task_classes[task_id])
 
+    def get_seen_classes(self, task_id: int) -> list[int]:
+        seen_classes: list[int] = []
+        for tid in range(task_id + 1):
+            seen_classes.extend(self.get_task_classes(tid))
+        return seen_classes
+
+    def get_seen_class_to_index(self, task_id: int) -> dict[int, int]:
+        return {
+            class_id: index
+            for index, class_id in enumerate(self.get_seen_classes(task_id))
+        }
+
     def get_seen_test_indices(self, task_id: int) -> list[int]:
         """
         Return test indices for all classes seen up to current task.
@@ -57,24 +86,28 @@ class FederatedDatasetManager:
             merged.extend(self.task_to_test_indices[f"task_{tid}"])
         return merged
 
-    def get_train_subset(self, task_id: int, client_id: int) -> Subset:
+    def get_train_subset(self, task_id: int, client_id: int) -> Dataset:
         task_key = f"task_{task_id}"
         client_key = f"client_{client_id}"
         indices = self.task_to_client_train_indices[task_key][client_key]
-        return Subset(self.train_dataset, indices)
+        subset = Subset(self.train_dataset, indices)
+        return TargetRemapDataset(subset, self.get_seen_class_to_index(task_id))
 
-    def get_all_client_train_subsets(self, task_id: int) -> dict[str, Subset]:
+    def get_all_client_train_subsets(self, task_id: int) -> dict[str, Dataset]:
         task_key = f"task_{task_id}"
-        result: dict[str, Subset] = {}
+        result: dict[str, Dataset] = {}
+        label_to_index = self.get_seen_class_to_index(task_id)
 
         for client_key, indices in self.task_to_client_train_indices[task_key].items():
-            result[client_key] = Subset(self.train_dataset, indices)
+            subset = Subset(self.train_dataset, indices)
+            result[client_key] = TargetRemapDataset(subset, label_to_index)
 
         return result
 
-    def get_seen_test_subset(self, task_id: int) -> Subset:
+    def get_seen_test_subset(self, task_id: int) -> Dataset:
         indices = self.get_seen_test_indices(task_id)
-        return Subset(self.test_dataset, indices)
+        subset = Subset(self.test_dataset, indices)
+        return TargetRemapDataset(subset, self.get_seen_class_to_index(task_id))
 
     def get_task_data(self, task_id: int) -> FederatedTaskData:
         return FederatedTaskData(

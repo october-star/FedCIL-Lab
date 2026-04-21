@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.cifar import get_cifar_dataset
 from src.data.federated_dataset import FederatedDatasetManager
 from src.methods.finetune import Finetune
+from src.methods.gdr_replay import LocalReplayGDR
 from src.methods.replay import LocalReplay
 from src.models.incremental_model import IncrementalNet
 
@@ -21,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--method",
         default="finetune",
-        choices=["finetune", "local_replay"],
+        choices=["finetune", "local_replay", "local_replay_gdr"],
     )
     parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100"])
     parser.add_argument(
@@ -50,6 +51,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--buffer_size", type=int, default=200)
     parser.add_argument("--samples_per_task", type=int, default=None)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--gdr_rank", type=int, default=8)
+    parser.add_argument("--gdr_feature_samples", type=int, default=None)
+    parser.add_argument("--figure_dir", default="outputs/figures/gdr")
     return parser.parse_args()
 
 
@@ -115,6 +119,17 @@ def main() -> None:
             buffer_size=args.buffer_size,
             samples_per_task=args.samples_per_task,
             seed=args.seed,
+        )
+    elif args.method == "local_replay_gdr":
+        method = LocalReplayGDR(
+            **method_kwargs,
+            buffer_size=args.buffer_size,
+            samples_per_task=args.samples_per_task,
+            seed=args.seed,
+            gdr_rank=args.gdr_rank,
+            gdr_feature_samples=args.gdr_feature_samples,
+            figure_dir=args.figure_dir,
+            run_name=run_name,
         )
     else:
         raise ValueError(f"Unsupported method: {args.method}")

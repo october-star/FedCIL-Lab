@@ -13,7 +13,9 @@ from src.data.cifar import get_cifar_dataset
 from src.data.federated_dataset import FederatedDatasetManager
 from src.methods.finetune import Finetune
 from src.methods.gdr_replay import LocalReplayGDR
+from src.methods.gdr_tts_replay import LocalReplayGDRTTS
 from src.methods.replay import LocalReplay
+from src.methods.tts_replay import LocalReplayTTS
 from src.models.incremental_model import IncrementalNet
 
 
@@ -22,7 +24,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--method",
         default="finetune",
-        choices=["finetune", "local_replay", "local_replay_gdr"],
+        choices=[
+            "finetune",
+            "local_replay",
+            "local_replay_gdr",
+            "local_replay_tts",
+            "local_replay_gdr_tts",
+        ],
     )
     parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100"])
     parser.add_argument(
@@ -54,6 +62,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gdr_rank", type=int, default=8)
     parser.add_argument("--gdr_feature_samples", type=int, default=None)
     parser.add_argument("--figure_dir", default="outputs/figures/gdr")
+    parser.add_argument("--tts_old_temp", type=float, default=2.0)
+    parser.add_argument("--tts_new_temp", type=float, default=1.0)
+    parser.add_argument("--tts_old_weight", type=float, default=1.5)
+    parser.add_argument("--tts_new_weight", type=float, default=1.0)
     return parser.parse_args()
 
 
@@ -130,6 +142,32 @@ def main() -> None:
             gdr_feature_samples=args.gdr_feature_samples,
             figure_dir=args.figure_dir,
             run_name=run_name,
+        )
+    elif args.method == "local_replay_tts":
+        method = LocalReplayTTS(
+            **method_kwargs,
+            buffer_size=args.buffer_size,
+            samples_per_task=args.samples_per_task,
+            seed=args.seed,
+            old_temp=args.tts_old_temp,
+            new_temp=args.tts_new_temp,
+            old_weight=args.tts_old_weight,
+            new_weight=args.tts_new_weight,
+        )
+    elif args.method == "local_replay_gdr_tts":
+        method = LocalReplayGDRTTS(
+            **method_kwargs,
+            buffer_size=args.buffer_size,
+            samples_per_task=args.samples_per_task,
+            seed=args.seed,
+            gdr_rank=args.gdr_rank,
+            gdr_feature_samples=args.gdr_feature_samples,
+            figure_dir=args.figure_dir,
+            run_name=run_name,
+            old_temp=args.tts_old_temp,
+            new_temp=args.tts_new_temp,
+            old_weight=args.tts_old_weight,
+            new_weight=args.tts_new_weight,
         )
     else:
         raise ValueError(f"Unsupported method: {args.method}")

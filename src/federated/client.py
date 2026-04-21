@@ -16,6 +16,7 @@ class Client:
         batch_size: int,
         epochs: int,
         lr: float,
+        loss_fn=None,
     ):
         if len(dataset) < 2:
             raise ValueError("BatchNorm training requires at least 2 samples.")
@@ -38,8 +39,6 @@ class Client:
             weight_decay=1e-5,
         )
 
-        criterion = nn.CrossEntropyLoss()
-
         total_loss = 0.0
 
         for _ in range(epochs):
@@ -48,7 +47,10 @@ class Client:
 
                 optimizer.zero_grad()
                 logits = model(x)
-                loss = criterion(logits, y)
+                if loss_fn is None:
+                    loss = nn.functional.cross_entropy(logits, y)
+                else:
+                    loss = loss_fn(logits, y)
 
                 loss.backward()
                 optimizer.step()

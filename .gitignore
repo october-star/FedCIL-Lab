@@ -5,3 +5,8 @@ data/processed
 outputs/
 *.pt
 *.pyc
+
+# Allow results JSONs to be tracked
+# Allow results JSONs to be tracked
+!outputs/results/
+!outputs/results/*.json

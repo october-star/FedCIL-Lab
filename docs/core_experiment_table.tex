@@ -1,0 +1,19 @@
+\begin{table}[t]
+\centering
+\caption{Core experiments on CIFAR-100 under the federated class-incremental setting. All experiments use 10 tasks, 10 classes per task, 5 clients, ResNet-18, SGD, batch size 128, and 100 communication rounds per task. Each experiment is repeated with 3 random seeds (1, 2, and 3), and the mean/std are reported.}
+\label{tab:core_experiments}
+\begin{tabular}{llllll}
+\hline
+Dataset & Tasks & Clients & Beta & Buffer & Method \\
+\hline
+CIFAR-100 & 10 & 5 & 0.1 & 500 & Replay \\
+CIFAR-100 & 10 & 5 & 0.1 & 500 & Replay + TTS \\
+CIFAR-100 & 10 & 5 & 0.1 & 500 & Replay + GDR \\
+CIFAR-100 & 10 & 5 & 0.1 & 500 & Replay + GDR + TTS \\
+CIFAR-100 & 10 & 5 & 0.5 & 500 & Replay \\
+CIFAR-100 & 10 & 5 & 0.5 & 500 & Replay + TTS \\
+CIFAR-100 & 10 & 5 & 0.5 & 500 & Replay + GDR \\
+CIFAR-100 & 10 & 5 & 0.5 & 500 & Replay + GDR + TTS \\
+\hline
+\end{tabular}
+\end{table}

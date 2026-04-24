@@ -330,6 +330,64 @@ python scripts/train.py --method local_replay_gdr --run_name replay_gdr_seed1_be
 python scripts/train.py --method local_replay_gdr_tts --run_name replay_gdr_tts_seed1_beta05 --no_download
 ```
 
+## Sequential Execution —— Core Experiment Table
+
+For the full CIFAR-100 core experiment pipeline with 3 seeds, run the following steps in order:
+
+### 1. Prepare multi-seed task splits and federated partitions
+
+```bash
+bash jobs/local/prepare_multiseed_cifar100.sh
+```
+
+This generates:
+
+- CIFAR-100 task splits for `seed = 1, 2, 3`
+- federated partitions for `beta = 0.1` and `beta = 0.5`
+
+### 2. Run all core experiments
+
+```bash
+bash jobs/local/run_core_all_multiseed.sh
+```
+
+This runs the 8 core configurations for each seed:
+
+- `local_replay`
+- `local_replay_tts`
+- `local_replay_gdr`
+- `local_replay_gdr_tts`
+
+under:
+
+- `beta = 0.1`
+- `beta = 0.5`
+
+with:
+
+- `buffer_size = 500`
+- `rounds = 100`
+
+### 3. Summarize all result JSON files
+
+```bash
+bash jobs/local/summarize_results.sh
+```
+
+This collects `outputs/results/*.json` into:
+
+```text
+outputs/results/summary.csv
+```
+
+### Recommended full order
+
+```bash
+bash jobs/local/prepare_multiseed_cifar100.sh
+bash jobs/local/run_core_all_multiseed.sh
+bash jobs/local/summarize_results.sh
+```
+
 ## Ablation Suggestions
 
 To compare stage-by-stage effects, run:

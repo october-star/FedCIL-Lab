@@ -15,10 +15,29 @@
 #SBATCH --mem=64G
 
 module purge
-module load Python/3.11
-source ~/venvs/myddlenv/bin/activate
+module load Python/3.10
 
-#pip install -r requirements.txt
+# 删除旧的虚拟环境
+# rm -rf ~/venvs/myddlenv
+
+# 用 Python 3.11 重新创建
+# python -m venv ~/venvs/myddlenv
+
+# source ~/venvs/myddlenv/bin/activate
+
+VENV_PATH=~/venvs/myddlenv
+
+# 激活虚拟环境
+source $VENV_PATH/bin/activate
+
+# 确认使用的是虚拟环境的 Python
+echo "Python path: $(which python)"
+echo "Pip path: $(which pip)"
+
+# 升级 pip（可选，但推荐）
+# pip install --upgrade pip
+
+# pip install -r requirements.txt
 
 
 echo "Running on node: $(hostname)"

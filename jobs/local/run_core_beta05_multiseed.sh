@@ -31,10 +31,10 @@ for SEED in 1 2 3; do
     --rounds 100 \
     --buffer_size 500 \
     --seed "$SEED" \
-    --tts_old_temp 2.0 \
+    --tts_old_temp 0.9 \
     --tts_new_temp 1.0 \
-    --tts_old_weight 1.5 \
-    --tts_new_weight 1.0 \
+    --tts_old_weight 1.1 \
+    --tts_new_weight 0.9 \
     --run_name "cifar100_beta05_replay_tts_buf500_seed${SEED}" \
     --no_download
 
@@ -65,10 +65,10 @@ for SEED in 1 2 3; do
     --samples_per_task 50 \
     --gdr_rank 8 \
     --seed "$SEED" \
-    --tts_old_temp 2.0 \
-    --tts_new_temp 1.0 \
-    --tts_old_weight 1.5 \
-    --tts_new_weight 1.0 \
+    --tts_old_temp 0.9 \
+    --tts_new_temp 1.1 \
+    --tts_old_weight 1.1 \
+    --tts_new_weight 0.9 \
     --run_name "cifar100_beta05_replay_gdr_tts_backbonegdr_buf500_seed${SEED}" \
     --no_download
 done

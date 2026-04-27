@@ -50,7 +50,7 @@ for SEED in 1 2 3; do
     --samples_per_task 50 \
     --gdr_rank 8 \
     --seed "$SEED" \
-    --run_name "cifar100_beta05_replay_gdr_buf500_seed${SEED}" \
+    --run_name "cifar100_beta05_replay_gdr_backbonegdr_buf500_seed${SEED}" \
     --no_download
 
   python scripts/train.py \
@@ -69,6 +69,6 @@ for SEED in 1 2 3; do
     --tts_new_temp 1.0 \
     --tts_old_weight 1.5 \
     --tts_new_weight 1.0 \
-    --run_name "cifar100_beta05_replay_gdr_tts_buf500_seed${SEED}" \
+    --run_name "cifar100_beta05_replay_gdr_tts_backbonegdr_buf500_seed${SEED}" \
     --no_download
 done

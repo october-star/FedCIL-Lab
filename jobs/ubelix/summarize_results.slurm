@@ -1,30 +1,27 @@
 #!/bin/bash
-#SBATCH --job-name=prepare_data
-#SBATCH --output=FedCIL-Lab/outputs/logs/%x_%j.out
-#SBATCH --error=FedCIL-Lab/outputs/logs/%x_%j.err
+#SBATCH --job-name=fedcil_sum
+#SBATCH --output=outputs/logs/%x_%j.out
+#SBATCH --error=outputs/logs/%x_%j.err
 
 #SBATCH --account=gratis
 #SBATCH --partition=gpu
 #SBATCH --qos=job_gratis
 #SBATCH --gres=gpu:rtx4090:1
 
-#SBATCH --time=00:10:00
+#SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=32G
+#SBATCH --mem=16G
 
 module purge
 module load Python/3.11
 source ~/venvs/myddlenv/bin/activate
 
-cd $SCRATCH/FedCIL-Lab
-
-mkdir -p outputs/logs
-mkdir -p data/raw
-
 echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
+echo "Start time: $(date)"
 
-python scripts/prepare_data.py --dataset all
+bash jobs/local/summarize_results.sh
 
+echo "Finished time: $(date)"

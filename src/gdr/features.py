@@ -4,8 +4,8 @@ import random
 from dataclasses import dataclass
 
 import torch
-import torch.nn.functional as F
-from torch.utils.data import Dataset
+from torch import nn
+from torch.utils.data import DataLoader, Dataset, Subset
 
 
 @dataclass
@@ -17,32 +17,15 @@ class ClientFeaturePayload:
     dataset_indices: list[int]
 
 
-def construct_pseudo_feature(x: torch.Tensor, grid_size: int = 4) -> torch.Tensor:
-    """
-    Build a lightweight, model-free pseudo feature from an image tensor.
-
-    The feature mixes channel statistics and coarse spatial averages. This keeps
-    GDR independent from the classifier while still exposing sample diversity.
-    """
-    if x.ndim != 3:
-        raise ValueError(f"Expected image tensor [C,H,W], got shape {tuple(x.shape)}")
-
-    x = x.detach().float().cpu()
-    flat = x.flatten(start_dim=1)
-    channel_mean = flat.mean(dim=1)
-    channel_std = flat.std(dim=1, unbiased=False)
-    channel_abs_mean = flat.abs().mean(dim=1)
-    pooled = F.adaptive_avg_pool2d(x.unsqueeze(0), (grid_size, grid_size)).flatten()
-    return torch.cat([channel_mean, channel_std, channel_abs_mean, pooled])
-
-
 def build_client_feature_payload(
     dataset: Dataset,
     client_id: int,
     task_id: int,
+    feature_extractor: nn.Module,
+    device: torch.device | str,
     max_samples: int | None = None,
     seed: int = 0,
-    grid_size: int = 4,
+    batch_size: int = 128,
 ) -> ClientFeaturePayload:
     indices = list(range(len(dataset)))
     rng = random.Random(seed)
@@ -50,19 +33,41 @@ def build_client_feature_payload(
     if max_samples is not None:
         indices = indices[:max_samples]
 
-    features = []
-    labels = []
-    for dataset_index in indices:
-        x, y = dataset[dataset_index]
-        if not torch.is_tensor(x):
-            x = torch.as_tensor(x)
-        features.append(construct_pseudo_feature(x, grid_size=grid_size))
-        labels.append(int(y))
+    labels = [int(dataset[dataset_index][1]) for dataset_index in indices]
 
-    if features:
-        feature_matrix = torch.stack(features)
-    else:
-        feature_matrix = torch.empty(0, 0)
+    if not indices:
+        return ClientFeaturePayload(
+            client_id=client_id,
+            task_id=task_id,
+            features=torch.empty(0, 0),
+            labels=labels,
+            dataset_indices=indices,
+        )
+
+    loader = DataLoader(
+        Subset(dataset, indices),
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+    )
+
+    feature_extractor_device = torch.device(device)
+    was_training = feature_extractor.training
+    feature_extractor.eval()
+
+    feature_batches = []
+    with torch.no_grad():
+        for x, _ in loader:
+            if not torch.is_tensor(x):
+                x = torch.as_tensor(x)
+            x = x.to(feature_extractor_device, non_blocking=True)
+            feats = feature_extractor(x)
+            feature_batches.append(feats.detach().cpu())
+
+    if was_training:
+        feature_extractor.train()
+
+    feature_matrix = torch.cat(feature_batches, dim=0)
 
     return ClientFeaturePayload(
         client_id=client_id,

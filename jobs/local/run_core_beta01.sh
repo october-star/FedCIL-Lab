@@ -37,7 +37,7 @@ python scripts/train.py \
   "${COMMON_ARGS[@]}" \
   --samples_per_task 50 \
   --gdr_rank 8 \
-  --run_name cifar100_beta01_replay_gdr_buf500_seed1
+  --run_name cifar100_beta01_replay_gdr_backbonegdr_buf500_seed1
 
 python scripts/train.py \
   --method local_replay_gdr_tts \
@@ -48,4 +48,4 @@ python scripts/train.py \
   --tts_new_temp 1.0 \
   --tts_old_weight 1.5 \
   --tts_new_weight 1.0 \
-  --run_name cifar100_beta01_replay_gdr_tts_buf500_seed1
+  --run_name cifar100_beta01_replay_gdr_tts_backbonegdr_buf500_seed1

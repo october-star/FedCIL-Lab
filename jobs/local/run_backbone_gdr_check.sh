@@ -15,30 +15,19 @@ COMMON_ARGS=(
   --batch_size 128
   --rounds 100
   --buffer_size 500
+  --seed 1
   --no_download
 )
 
-python scripts/train.py \
-  --method local_replay \
-  "${COMMON_ARGS[@]}" \
-  --run_name cifar100_beta05_replay_buf500_seed1
-
-python scripts/train.py \
-  --method local_replay_tts \
-  "${COMMON_ARGS[@]}" \
-  --tts_old_temp 2.0 \
-  --tts_new_temp 1.0 \
-  --tts_old_weight 1.5 \
-  --tts_new_weight 1.0 \
-  --run_name cifar100_beta05_replay_tts_buf500_seed1
-
+echo "[1/2] Running Replay + GDR with backbone features..."
 python scripts/train.py \
   --method local_replay_gdr \
   "${COMMON_ARGS[@]}" \
   --samples_per_task 50 \
   --gdr_rank 8 \
-  --run_name cifar100_beta05_replay_gdr_backbonegdr_buf500_seed1
+  --run_name cifar100_beta05_replay_gdr_backbonecheck_buf500_seed1
 
+echo "[2/2] Running Replay + GDR + TTS with backbone features..."
 python scripts/train.py \
   --method local_replay_gdr_tts \
   "${COMMON_ARGS[@]}" \
@@ -48,4 +37,8 @@ python scripts/train.py \
   --tts_new_temp 1.0 \
   --tts_old_weight 1.5 \
   --tts_new_weight 1.0 \
-  --run_name cifar100_beta05_replay_gdr_tts_backbonegdr_buf500_seed1
+  --run_name cifar100_beta05_replay_gdr_tts_backbonecheck_buf500_seed1
+
+echo "Done. Compare against the old seed-1 beta=0.5 references:"
+echo "  local_replay_gdr      : 0.1174"
+echo "  local_replay_gdr_tts  : 0.2044"

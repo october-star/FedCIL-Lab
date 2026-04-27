@@ -183,6 +183,8 @@ class LocalReplayGDRTTS(BaseMethod):
                     current_subset,
                     client_id=client_id,
                     task_id=task_id,
+                    feature_extractor=self.model.backbone,
+                    device=self.device,
                     max_samples=self.gdr_feature_samples,
                     seed=self.seed + task_id * 1000 + client_id,
                 )

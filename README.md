@@ -163,7 +163,7 @@ python scripts/train.py \
   --samples_per_task 50 \
   --gdr_rank 8 \
   --gdr_feature_samples 500 \
-  --run_name local_replay_gdr_seed1_beta05 \
+  --run_name local_replay_gdr_backbonegdr_seed1_beta05 \
   --no_download
 ```
 
@@ -174,6 +174,10 @@ Additional GDR arguments:
 --gdr_feature_samples
 --figure_dir
 ```
+
+`local_replay_gdr` now extracts GDR scores from backbone features by default. Use a
+distinct `run_name` such as `backbonegdr` if you want to keep older pseudo-feature
+results for comparison.
 
 ### 4. Replay + TTS
 
@@ -202,7 +206,7 @@ python scripts/train.py \
   --tts_new_temp 1.0 \
   --tts_old_weight 1.5 \
   --tts_new_weight 1.0 \
-  --run_name local_replay_gdr_tts_seed1_beta05 \
+  --run_name local_replay_gdr_tts_backbonegdr_seed1_beta05 \
   --no_download
 ```
 
@@ -326,8 +330,8 @@ python scripts/build_splits.py --dataset cifar10 --num_tasks 5 --seed 1
 python scripts/build_federated_partitions.py --dataset cifar10 --num_tasks 5 --num_clients 5 --beta 0.5 --seed 1
 python scripts/train.py --method local_replay --run_name replay_seed1_beta05 --no_download
 python scripts/train.py --method local_replay_tts --run_name replay_tts_seed1_beta05 --no_download
-python scripts/train.py --method local_replay_gdr --run_name replay_gdr_seed1_beta05 --no_download
-python scripts/train.py --method local_replay_gdr_tts --run_name replay_gdr_tts_seed1_beta05 --no_download
+python scripts/train.py --method local_replay_gdr --run_name replay_gdr_backbonegdr_seed1_beta05 --no_download
+python scripts/train.py --method local_replay_gdr_tts --run_name replay_gdr_tts_backbonegdr_seed1_beta05 --no_download
 ```
 
 ## Sequential Execution —— Core Experiment Table
@@ -355,8 +359,8 @@ This runs the 8 core configurations for each seed:
 
 - `local_replay`
 - `local_replay_tts`
-- `local_replay_gdr`
-- `local_replay_gdr_tts`
+- `local_replay_gdr` (saved with `backbonegdr` in the run name)
+- `local_replay_gdr_tts` (saved with `backbonegdr` in the run name)
 
 under:
 

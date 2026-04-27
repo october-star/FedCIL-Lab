@@ -18,6 +18,9 @@ module purge
 module load Python/3.11
 source ~/venvs/myddlenv/bin/activate
 
+# pip install -r requirements.txt
+
+
 echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
 echo "Start time: $(date)"

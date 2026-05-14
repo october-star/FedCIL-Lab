@@ -16,7 +16,7 @@ class FederatedTrainer:
         device,
         num_clients: int,
         batch_size: int = 128,
-        local_epochs: int = 1,
+        local_epochs: int = 2,
         rounds: int = 10,
         lr: float = 0.01,
     ):

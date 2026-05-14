@@ -8,6 +8,8 @@ from typing import Any
 import torch
 from torch.utils.data import Dataset
 
+from src.data.sample_ids import resolve_sample_id
+
 
 @dataclass
 class ReplaySample:
@@ -38,6 +40,12 @@ class ReplayBuffer(Dataset):
         sample = self.samples[index]
         return sample.x, sample.y
 
+    def get_sample_id(self, index: int) -> int:
+        return int(self.samples[index].metadata.get("sample_id", index))
+
+    def get_sampling_weight(self, index: int) -> float:
+        return float(self.samples[index].metadata.get("sampling_weight", 1.0))
+
     def add_dataset(
         self,
         dataset: Dataset,
@@ -65,6 +73,7 @@ class ReplayBuffer(Dataset):
                         "task_id": task_id,
                         "client_id": client_id,
                         "dataset_index": dataset_index,
+                        "sample_id": resolve_sample_id(dataset, dataset_index),
                     },
                 )
             )
@@ -93,6 +102,9 @@ class ReplayBuffer(Dataset):
                 "task_id": task_id,
                 "client_id": client_id,
                 "dataset_index": dataset_index,
+                "sample_id": int(
+                    record.get("sample_id", resolve_sample_id(dataset, dataset_index))
+                ),
                 "leverage_score": float(record["leverage_score"]),
                 "raw_leverage_score": float(record["raw_leverage_score"]),
             }
@@ -105,6 +117,100 @@ class ReplayBuffer(Dataset):
             )
 
         self._rebalance()
+
+    def add_selected_records(
+        self,
+        dataset: Dataset,
+        records: list[dict[str, Any]],
+        task_id: int,
+        client_id: int,
+    ) -> None:
+        if self.capacity == 0 or len(dataset) == 0 or not records:
+            return
+
+        for record in records:
+            dataset_index = int(record["dataset_index"])
+            x, y = dataset[dataset_index]
+            if not torch.is_tensor(x):
+                x = torch.as_tensor(x)
+
+            metadata = {
+                "task_id": int(record.get("source_task_id", task_id)),
+                "client_id": int(record.get("source_client_id", client_id)),
+                "dataset_index": dataset_index,
+                "sample_id": int(
+                    record.get("sample_id", resolve_sample_id(dataset, dataset_index))
+                ),
+                "leverage_score": float(
+                    record.get("leverage_score", record.get("raw_leverage_score", 0.0))
+                ),
+                "raw_leverage_score": float(record.get("raw_leverage_score", 0.0)),
+                "sampling_probability": float(record.get("sampling_probability", 0.0)),
+                "sampling_weight": float(record.get("sampling_weight", 1.0)),
+            }
+            self.samples.append(
+                ReplaySample(
+                    x=x.detach().cpu(),
+                    y=int(y),
+                    metadata=metadata,
+                )
+            )
+
+        self._rebalance()
+
+    def replace_with_scored_dataset(
+        self,
+        dataset: Dataset,
+        records: list[dict[str, Any]],
+        task_id: int,
+        client_id: int,
+        max_samples: int | None = None,
+        class_wise: bool = True,
+    ) -> None:
+        if self.capacity == 0 or len(dataset) == 0 or not records:
+            self.samples = []
+            return
+
+        budget = self.capacity if max_samples is None else min(max_samples, self.capacity)
+        if budget <= 0:
+            self.samples = []
+            return
+
+        if class_wise:
+            selected_records = self._class_balanced_records(records, budget)
+        else:
+            selected_records = sorted(
+                records,
+                key=lambda record: float(record["raw_leverage_score"]),
+                reverse=True,
+            )[:budget]
+
+        new_samples: list[ReplaySample] = []
+        for record in selected_records:
+            dataset_index = int(record["dataset_index"])
+            x, y = dataset[dataset_index]
+            if not torch.is_tensor(x):
+                x = torch.as_tensor(x)
+
+            metadata = {
+                "task_id": int(record.get("source_task_id", task_id)),
+                "client_id": int(record.get("source_client_id", client_id)),
+                "dataset_index": dataset_index,
+                "sample_id": int(
+                    record.get("sample_id", resolve_sample_id(dataset, dataset_index))
+                ),
+                "leverage_score": float(record["leverage_score"]),
+                "raw_leverage_score": float(record["raw_leverage_score"]),
+            }
+            new_samples.append(
+                ReplaySample(
+                    x=x.detach().cpu(),
+                    y=int(y),
+                    metadata=metadata,
+                )
+            )
+
+        self.samples = new_samples
 
     def class_counts(self) -> dict[int, int]:
         counts = Counter(sample.y for sample in self.samples)
@@ -133,7 +239,10 @@ class ReplayBuffer(Dataset):
 
         for class_samples in by_class.values():
             class_samples.sort(
-                key=lambda sample: sample.metadata.get("leverage_score", 0.0),
+                key=lambda sample: sample.metadata.get(
+                    "raw_leverage_score",
+                    sample.metadata.get("leverage_score", 0.0),
+                ),
                 reverse=True,
             )
 
@@ -167,20 +276,41 @@ class ReplayBuffer(Dataset):
 
         for class_records in by_class.values():
             class_records.sort(
-                key=lambda record: float(record["leverage_score"]),
+                key=lambda record: float(record["raw_leverage_score"]),
                 reverse=True,
             )
 
-        selected: list[dict[str, Any]] = []
         classes = sorted(by_class)
-        while len(selected) < limit and classes:
-            next_classes = []
-            for class_id in classes:
-                class_records = by_class[class_id]
-                if class_records and len(selected) < limit:
-                    selected.append(class_records.pop(0))
-                if class_records:
-                    next_classes.append(class_id)
-            classes = next_classes
+        selected: list[dict[str, Any]] = []
+        if len(classes) >= limit:
+            ranked_heads = sorted(
+                (class_records[0] for class_records in by_class.values() if class_records),
+                key=lambda record: float(record["raw_leverage_score"]),
+                reverse=True,
+            )
+            return ranked_heads[:limit]
 
-        return selected
+        per_class = max(1, limit // len(classes))
+
+        for class_id in classes:
+            selected.extend(by_class[class_id][:per_class])
+
+        if len(selected) < limit:
+            selected_keys = {
+                (int(record["client_id"]), int(record["sample_id"]))
+                for record in selected
+            }
+            remaining = [
+                record
+                for class_id in classes
+                for record in by_class[class_id][per_class:]
+                if (int(record["client_id"]), int(record["sample_id"]))
+                not in selected_keys
+            ]
+            remaining.sort(
+                key=lambda record: float(record["raw_leverage_score"]),
+                reverse=True,
+            )
+            selected.extend(remaining[: limit - len(selected)])
+
+        return selected[:limit]

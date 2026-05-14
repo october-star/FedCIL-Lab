@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -42,15 +44,30 @@ class Client:
         total_loss = 0.0
 
         for _ in range(epochs):
-            for x, y in loader:
+            for batch in loader:
+                sample_weights = None
+                if isinstance(batch, (list, tuple)) and len(batch) == 3:
+                    x, y, sample_weights = batch
+                else:
+                    x, y = batch
+
                 x, y = x.to(self.device), y.to(self.device)
+                if sample_weights is not None:
+                    sample_weights = sample_weights.to(self.device)
 
                 optimizer.zero_grad()
                 logits = model(x)
                 if loss_fn is None:
-                    loss = nn.functional.cross_entropy(logits, y)
+                    per_sample = nn.functional.cross_entropy(logits, y, reduction="none")
+                    if sample_weights is None:
+                        loss = per_sample.mean()
+                    else:
+                        loss = (per_sample * sample_weights).sum() / sample_weights.sum().clamp_min(1e-12)
                 else:
-                    loss = loss_fn(logits, y)
+                    if sample_weights is not None and "sample_weights" in inspect.signature(loss_fn).parameters:
+                        loss = loss_fn(logits, y, sample_weights=sample_weights)
+                    else:
+                        loss = loss_fn(logits, y)
 
                 loss.backward()
                 optimizer.step()

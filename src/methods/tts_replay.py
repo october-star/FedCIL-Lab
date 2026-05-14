@@ -23,10 +23,10 @@ class LocalReplayTTS(BaseMethod):
         buffer_size: int = 200,
         samples_per_task: int | None = None,
         seed: int = 0,
-        old_temp: float = 2.0,
-        new_temp: float = 1.0,
-        old_weight: float = 1.5,
-        new_weight: float = 1.0,
+        old_temp: float = 0.9,
+        new_temp: float = 1.1,
+        old_weight: float = 1.1,
+        new_weight: float = 0.9,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -73,14 +73,16 @@ class LocalReplayTTS(BaseMethod):
                 "buffer_before": self._buffer_summaries(),
             }
 
-            loss_fn = partial(
-                tts_cross_entropy,
-                old_classes=old_classes,
-                old_temp=self.old_temp,
-                new_temp=self.new_temp,
-                old_weight=self.old_weight,
-                new_weight=self.new_weight,
-            )
+            loss_fn = None
+            if task_id > 0:
+                loss_fn = partial(
+                    tts_cross_entropy,
+                    old_classes=old_classes,
+                    old_temp=self.old_temp,
+                    new_temp=self.new_temp,
+                    old_weight=self.old_weight,
+                    new_weight=self.new_weight,
+                )
 
             for round_id in range(self.rounds):
                 local_states = []

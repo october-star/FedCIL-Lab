@@ -7,6 +7,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, Subset
 
+from src.data.sample_ids import resolve_sample_id
+
 
 @dataclass
 class ClientFeaturePayload:
@@ -15,6 +17,25 @@ class ClientFeaturePayload:
     features: torch.Tensor
     labels: list[int]
     dataset_indices: list[int]
+    sample_ids: list[int]
+    left_transform: torch.Tensor | None = None
+
+
+def sample_orthogonal_matrix(
+    dim: int,
+    seed: int,
+    dtype: torch.dtype = torch.float32,
+) -> torch.Tensor:
+    if dim <= 1:
+        return torch.eye(max(dim, 1), dtype=dtype)[:dim, :dim]
+
+    generator = torch.Generator(device="cpu")
+    generator.manual_seed(seed)
+    gaussian = torch.randn(dim, dim, generator=generator, dtype=dtype)
+    q, r = torch.linalg.qr(gaussian, mode="reduced")
+    signs = torch.sign(torch.diagonal(r))
+    signs = torch.where(signs == 0, torch.ones_like(signs), signs)
+    return q * signs.unsqueeze(0)
 
 
 def build_client_feature_payload(
@@ -26,6 +47,8 @@ def build_client_feature_payload(
     max_samples: int | None = None,
     seed: int = 0,
     batch_size: int = 128,
+    right_transform: torch.Tensor | None = None,
+    left_transform_seed: int | None = None,
 ) -> ClientFeaturePayload:
     indices = list(range(len(dataset)))
     rng = random.Random(seed)
@@ -34,6 +57,7 @@ def build_client_feature_payload(
         indices = indices[:max_samples]
 
     labels = [int(dataset[dataset_index][1]) for dataset_index in indices]
+    sample_ids = [resolve_sample_id(dataset, dataset_index) for dataset_index in indices]
 
     if not indices:
         return ClientFeaturePayload(
@@ -42,6 +66,8 @@ def build_client_feature_payload(
             features=torch.empty(0, 0),
             labels=labels,
             dataset_indices=indices,
+            sample_ids=sample_ids,
+            left_transform=None,
         )
 
     loader = DataLoader(
@@ -57,7 +83,8 @@ def build_client_feature_payload(
 
     feature_batches = []
     with torch.no_grad():
-        for x, _ in loader:
+        for batch in loader:
+            x = batch[0]
             if not torch.is_tensor(x):
                 x = torch.as_tensor(x)
             x = x.to(feature_extractor_device, non_blocking=True)
@@ -68,6 +95,17 @@ def build_client_feature_payload(
         feature_extractor.train()
 
     feature_matrix = torch.cat(feature_batches, dim=0)
+    if right_transform is not None:
+        feature_matrix = feature_matrix @ right_transform.to(dtype=feature_matrix.dtype)
+
+    left_transform = None
+    if left_transform_seed is not None:
+        left_transform = sample_orthogonal_matrix(
+            feature_matrix.size(0),
+            seed=left_transform_seed,
+            dtype=feature_matrix.dtype,
+        )
+        feature_matrix = left_transform @ feature_matrix
 
     return ClientFeaturePayload(
         client_id=client_id,
@@ -75,4 +113,6 @@ def build_client_feature_payload(
         features=feature_matrix,
         labels=labels,
         dataset_indices=indices,
+        sample_ids=sample_ids,
+        left_transform=left_transform,
     )

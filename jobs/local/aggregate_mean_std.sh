@@ -4,6 +4,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-python scripts/summarize_results.py \
+python scripts/aggregate_mean_std.py \
   --results_dir outputs/results \
-  --output_csv outputs/results/summary_two.csv
+  --output_csv outputs/results/mean_std_summary.csv

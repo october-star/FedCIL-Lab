@@ -1,21 +1,28 @@
 from __future__ import annotations
 
 import copy
+from functools import partial
 from pathlib import Path
 
 from torch.utils.data import ConcatDataset
 
+from src.data.weighted_dataset import SampleWeightDataset
 from src.federated.aggregator import fedavg
 from src.federated.client import Client
-from src.gdr.features import build_client_feature_payload
-from src.gdr.server import compute_leverage_scores, group_records_by_client
+from src.gdr.features import build_client_feature_payload, sample_orthogonal_matrix
+from src.gdr.server import (
+    compute_leverage_scores,
+    group_records_by_client,
+    sample_records_by_probability,
+)
 from src.methods.base_method import BaseMethod
 from src.replay.buffer import ReplayBuffer
+from src.tts.loss import tts_cross_entropy
 
 
-class LocalReplayGDR(BaseMethod):
+class LocalReplayGDRTTSPaper(BaseMethod):
     """
-    Local replay baseline with GDR-guided buffer updates.
+    Paper-faithful GDR + TTS replay variant.
     """
 
     def __init__(
@@ -26,9 +33,13 @@ class LocalReplayGDR(BaseMethod):
         seed: int = 0,
         gdr_rank: int = 8,
         gdr_feature_samples: int | None = None,
-        gdr_class_wise: bool = True,
+        gdr_class_wise: bool = False,
         figure_dir: str | Path = "outputs/figures/gdr",
-        run_name: str = "local_replay_gdr",
+        run_name: str = "local_replay_gdr_tts_paper",
+        old_temp: float = 0.9,
+        new_temp: float = 1.1,
+        old_weight: float = 1.1,
+        new_weight: float = 0.9,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -40,6 +51,10 @@ class LocalReplayGDR(BaseMethod):
         self.gdr_class_wise = gdr_class_wise
         self.figure_dir = Path(figure_dir)
         self.run_name = run_name
+        self.old_temp = old_temp
+        self.new_temp = new_temp
+        self.old_weight = old_weight
+        self.new_weight = new_weight
         self.clients = [Client(self.device) for _ in range(self.num_clients)]
         self.buffers = [
             ReplayBuffer(capacity=buffer_size, seed=seed + client_id)
@@ -47,29 +62,53 @@ class LocalReplayGDR(BaseMethod):
         ]
 
     def train(self) -> dict:
-        print("Start Federated Local Replay + GDR Baseline...")
+        print("Start Federated Local Replay + GDR + TTS (paper branch)...")
         history = {
-            "method": "local_replay_gdr",
+            "method": "local_replay_gdr_tts_paper",
             "buffer_size": self.buffer_size,
             "samples_per_task": self.samples_per_task,
             "gdr_rank": self.gdr_rank,
             "gdr_feature_samples": self.gdr_feature_samples,
             "gdr_class_wise": self.gdr_class_wise,
+            "gdr_candidate_pool": "current_task_only",
+            "gdr_selection_mode": "global_probability_sampling",
+            "gdr_encryption": "P_k_X_Q",
+            "replay_weighting": "sqrt(1 / (n_s * p_x))",
+            "tts": {
+                "old_temp": self.old_temp,
+                "new_temp": self.new_temp,
+                "old_weight": self.old_weight,
+                "new_weight": self.new_weight,
+            },
             "tasks": [],
         }
 
         for task_id in range(self.dataset_manager.num_tasks):
             print(f"\n=== Task {task_id} ===")
 
+            old_classes = self.model.num_classes
             task_classes = self.dataset_manager.get_task_classes(task_id)
             self.model.expand_head(len(task_classes))
             self.model.to(self.device)
             task_history = {
                 "task_id": task_id,
                 "task_classes": task_classes,
+                "old_classes": old_classes,
+                "new_classes": len(task_classes),
                 "rounds": [],
                 "buffer_before": self._buffer_summaries(),
             }
+
+            loss_fn = None
+            if task_id > 0:
+                loss_fn = partial(
+                    tts_cross_entropy,
+                    old_classes=old_classes,
+                    old_temp=self.old_temp,
+                    new_temp=self.new_temp,
+                    old_weight=self.old_weight,
+                    new_weight=self.new_weight,
+                )
 
             for round_id in range(self.rounds):
                 local_states = []
@@ -94,6 +133,7 @@ class LocalReplayGDR(BaseMethod):
                         batch_size=self.batch_size,
                         epochs=self.local_epochs,
                         lr=self.lr,
+                        loss_fn=loss_fn,
                     )
 
                     local_states.append(state)
@@ -105,8 +145,7 @@ class LocalReplayGDR(BaseMethod):
 
                 total_samples = sum(sample_counts)
                 weights = [count / total_samples for count in sample_counts]
-                new_state = fedavg(local_states, weights)
-                self.model.load_state_dict(new_state)
+                self.model.load_state_dict(fedavg(local_states, weights))
 
                 if round_id % 5 == 0 or round_id == self.rounds - 1:
                     test_set = self.dataset_manager.get_seen_test_subset(task_id)
@@ -133,15 +172,7 @@ class LocalReplayGDR(BaseMethod):
             print(f"[Task {task_id}] Final Acc: {final_acc:.4f}")
             task_history["final_seen_acc"] = final_acc
             task_history["buffer_after"] = self._buffer_summaries()
-            task_history["gdr"] = {
-                "rank": gdr_result["rank"],
-                "class_wise": gdr_result["class_wise"],
-                "singular_values": gdr_result["singular_values"],
-                "class_singular_values": gdr_result["class_singular_values"],
-                "num_scored_samples": gdr_result["num_scored_samples"],
-                "leverage_plot": gdr_result["leverage_plot"],
-                "buffer_distribution_plot": gdr_result["buffer_distribution_plot"],
-            }
+            task_history["gdr"] = gdr_result
             history["tasks"].append(task_history)
 
         history["buffer_stats"] = self._buffer_summaries()
@@ -149,31 +180,49 @@ class LocalReplayGDR(BaseMethod):
 
     def _compose_train_dataset(self, current_subset, buffer: ReplayBuffer):
         if len(buffer) == 0:
-            return current_subset
-        return ConcatDataset([current_subset, buffer])
+            return SampleWeightDataset(current_subset, default_weight=1.0)
+        return ConcatDataset(
+            [
+                SampleWeightDataset(current_subset, default_weight=1.0),
+                SampleWeightDataset(buffer),
+            ]
+        )
+
+    def _global_sampling_budget(self) -> int:
+        if self.samples_per_task is not None:
+            return self.samples_per_task * self.num_clients
+        return self.buffer_size
 
     def _update_buffers_with_gdr(self, task_id: int) -> dict:
         from src.gdr.visualize import plot_buffer_class_distribution, plot_leverage_scores
 
+        if self.gdr_class_wise:
+            raise ValueError(
+                "Paper GDR with P_k / Q encryption currently supports only global "
+                "sampling. Use --no-gdr_class_wise."
+            )
+
         payloads = []
-        candidate_datasets = {}
+        current_datasets = {}
+        right_transform = sample_orthogonal_matrix(
+            self.model.feature_dim,
+            seed=self.seed + task_id * 1000 + 999_999,
+        )
 
         for client_id in range(self.num_clients):
             current_subset = self.dataset_manager.get_train_subset(task_id, client_id)
-            if self.gdr_class_wise and len(self.buffers[client_id]) > 0:
-                candidate_dataset = ConcatDataset([self.buffers[client_id], current_subset])
-            else:
-                candidate_dataset = current_subset
-            candidate_datasets[client_id] = candidate_dataset
+            current_datasets[client_id] = current_subset
             payloads.append(
                 build_client_feature_payload(
-                    candidate_dataset,
+                    current_subset,
                     client_id=client_id,
                     task_id=task_id,
                     feature_extractor=self.model.backbone,
                     device=self.device,
                     max_samples=self.gdr_feature_samples,
                     seed=self.seed + task_id * 1000 + client_id,
+                    right_transform=right_transform,
+                    left_transform_seed=self.seed + task_id * 10_000 + client_id,
                 )
             )
 
@@ -182,27 +231,20 @@ class LocalReplayGDR(BaseMethod):
             rank=self.gdr_rank,
             class_wise=self.gdr_class_wise,
         )
-        records_by_client = group_records_by_client(result.records)
+        selected_records = sample_records_by_probability(
+            result.records,
+            total_budget=self._global_sampling_budget(),
+            seed=self.seed + task_id,
+        )
+        records_by_client = group_records_by_client(selected_records)
 
         for client_id, buffer in enumerate(self.buffers):
-            client_records = records_by_client.get(client_id, [])
-            if self.gdr_class_wise:
-                buffer.replace_with_scored_dataset(
-                    candidate_datasets[client_id],
-                    records=client_records,
-                    task_id=task_id,
-                    client_id=client_id,
-                    max_samples=buffer.capacity,
-                    class_wise=True,
-                )
-            else:
-                buffer.add_scored_dataset(
-                    candidate_datasets[client_id],
-                    records=client_records,
-                    task_id=task_id,
-                    client_id=client_id,
-                    max_samples=self.samples_per_task,
-                )
+            buffer.add_selected_records(
+                current_datasets[client_id],
+                records=records_by_client.get(client_id, []),
+                task_id=task_id,
+                client_id=client_id,
+            )
 
         leverage_plot = self.figure_dir / f"{self.run_name}_task{task_id}_leverage.png"
         buffer_plot = (
@@ -225,6 +267,12 @@ class LocalReplayGDR(BaseMethod):
             "singular_values": result.singular_values,
             "class_singular_values": result.class_singular_values,
             "num_scored_samples": len(result.records),
+            "num_selected_samples": len(selected_records),
+            "global_sampling_budget": self._global_sampling_budget(),
+            "selection_mode": "global_probability_sampling",
+            "candidate_pool": "current_task_only",
+            "encryption": "P_k_X_Q",
+            "sampling_weight_formula": "sqrt(1 / (n_s * p_x))",
             "leverage_plot": str(leverage_plot),
             "buffer_distribution_plot": str(buffer_plot),
         }

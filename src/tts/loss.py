@@ -27,6 +27,18 @@ def apply_temperature_split(
     return torch.cat(chunks, dim=1) if chunks else logits
 
 
+def _weighted_group_mean(
+    values: torch.Tensor,
+    weights: torch.Tensor | None = None,
+) -> torch.Tensor:
+    if values.numel() == 0:
+        return values.new_tensor(0.0)
+    if weights is None:
+        return values.mean()
+    weights = weights.to(values.dtype)
+    return (values * weights).sum() / weights.sum().clamp_min(1e-12)
+
+
 def tts_cross_entropy(
     logits: torch.Tensor,
     targets: torch.Tensor,
@@ -35,6 +47,7 @@ def tts_cross_entropy(
     new_temp: float = 1.0,
     old_weight: float = 1.0,
     new_weight: float = 1.0,
+    sample_weights: torch.Tensor | None = None,
 ) -> torch.Tensor:
     scaled_logits = apply_temperature_split(
         logits=logits,
@@ -44,14 +57,28 @@ def tts_cross_entropy(
     )
     per_sample = F.cross_entropy(scaled_logits, targets, reduction="none")
 
-    if old_classes <= 0 or old_classes >= logits.size(1):
-        return per_sample.mean()
-
-    sample_weights = torch.full_like(per_sample, fill_value=new_weight, dtype=per_sample.dtype)
-    old_mask = targets < old_classes
-    sample_weights = torch.where(
-        old_mask,
-        torch.full_like(sample_weights, fill_value=old_weight),
-        sample_weights,
+    external_weights = (
+        sample_weights.to(per_sample.dtype) if sample_weights is not None else None
     )
-    return (per_sample * sample_weights).sum() / sample_weights.sum().clamp_min(1e-12)
+    if old_classes <= 0 or old_classes >= logits.size(1):
+        return _weighted_group_mean(per_sample, external_weights)
+
+    old_mask = targets < old_classes
+    new_mask = ~old_mask
+    loss = per_sample.new_tensor(0.0)
+
+    if old_mask.any():
+        old_losses = per_sample[old_mask]
+        old_sample_weights = (
+            external_weights[old_mask] if external_weights is not None else None
+        )
+        loss = loss + old_weight * _weighted_group_mean(old_losses, old_sample_weights)
+
+    if new_mask.any():
+        new_losses = per_sample[new_mask]
+        new_sample_weights = (
+            external_weights[new_mask] if external_weights is not None else None
+        )
+        loss = loss + new_weight * _weighted_group_mean(new_losses, new_sample_weights)
+
+    return loss

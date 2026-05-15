@@ -10,9 +10,9 @@ from src.federated.aggregator import fedavg
 from src.federated.client import Client
 from src.gdr.features import build_client_feature_payload, sample_orthogonal_matrix
 from src.gdr.server import (
-    compute_leverage_scores,
+    compute_client_local_leverage_scores,
     group_records_by_client,
-    sample_records_by_class_probability,
+    sample_records_official_style,
 )
 from src.methods.base_method import BaseMethod
 from src.replay.buffer import ReplayBuffer
@@ -68,9 +68,9 @@ class LocalReplayGDRPaper(BaseMethod):
             "gdr_feature_samples": self.gdr_feature_samples,
             "gdr_class_wise": self.gdr_class_wise,
             "gdr_candidate_pool": "current_task_only",
-            "gdr_selection_mode": "class_balanced_probability_sampling",
+            "gdr_selection_mode": "official_client_balanced_sampling",
             "gdr_encryption": "P_k_X_Q",
-            "replay_weighting": "sqrt(1 / (n_s * p_x))",
+            "replay_weighting": "uniform",
             "tasks": [],
         }
 
@@ -141,7 +141,6 @@ class LocalReplayGDRPaper(BaseMethod):
                         }
                     )
 
-
             final_test = self.dataset_manager.get_seen_test_subset(task_id)
             final_acc = self.evaluate(self.model, final_test)
             print(f"[Task {task_id}] Final Acc: {final_acc:.4f}")
@@ -202,14 +201,14 @@ class LocalReplayGDRPaper(BaseMethod):
                 )
             )
 
-        result = compute_leverage_scores(
+        result = compute_client_local_leverage_scores(
             payloads,
             rank=self.gdr_rank,
-            class_wise=self.gdr_class_wise,
         )
-        selected_records = sample_records_by_class_probability(
+        selected_records = sample_records_official_style(
             result.records,
             total_budget=self._global_sampling_budget(),
+            num_clients=self.num_clients,
             seed=self.seed + task_id,
         )
         records_by_client = group_records_by_client(selected_records)
@@ -239,16 +238,17 @@ class LocalReplayGDRPaper(BaseMethod):
 
         return {
             "rank": result.rank,
-            "class_wise": result.class_wise,
-            "singular_values": result.singular_values,
-            "class_singular_values": result.class_singular_values,
+            "class_wise": False,
+            "singular_values": [],
+            "client_singular_values": result.client_singular_values,
+            "class_singular_values": None,
             "num_scored_samples": len(result.records),
             "num_selected_samples": len(selected_records),
             "global_sampling_budget": self._global_sampling_budget(),
-            "selection_mode": "class_balanced_probability_sampling",
+            "selection_mode": "official_client_balanced_sampling",
             "candidate_pool": "current_task_only",
             "encryption": "P_k_X_Q",
-            "sampling_weight_formula": "sqrt(1 / (n_s_class * p_x_class))",
+            "sampling_weight_formula": "uniform",
             "leverage_plot": str(leverage_plot),
             "buffer_distribution_plot": str(buffer_plot),
         }

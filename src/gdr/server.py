@@ -18,6 +18,13 @@ class GDRResult:
     class_singular_values: dict[int, list[float]] | None = None
 
 
+@dataclass
+class ClientLocalGDRResult:
+    records: list[dict[str, Any]]
+    client_singular_values: dict[int, list[float]]
+    rank: int
+
+
 def _compute_group_scores(
     feature_matrix: torch.Tensor,
     rank: int,
@@ -208,6 +215,65 @@ def group_records_by_client(records: list[dict[str, Any]]) -> dict[int, list[dic
     return grouped
 
 
+def compute_client_local_leverage_scores(
+    payloads: list[ClientFeaturePayload],
+    rank: int = 8,
+    eps: float = 1e-12,
+) -> ClientLocalGDRResult:
+    valid_payloads = [payload for payload in payloads if len(payload.labels) > 0]
+    if not valid_payloads:
+        return ClientLocalGDRResult(records=[], client_singular_values={}, rank=0)
+
+    records: list[dict[str, Any]] = []
+    client_singular_values: dict[int, list[float]] = {}
+    observed_ranks: list[int] = []
+
+    for payload in valid_payloads:
+        normalized, _, singular_values, actual_rank = _compute_group_scores(
+            payload.features,
+            rank=rank,
+            eps=eps,
+        )
+        observed_ranks.append(actual_rank)
+        client_singular_values[payload.client_id] = singular_values
+
+        # Align row scores back to original sample order when a left transform exists.
+        if actual_rank > 0 and payload.left_transform is not None:
+            u, _, _ = torch.linalg.svd(payload.features.float(), full_matrices=False)
+            decoded_u = payload.left_transform.transpose(0, 1) @ u[:, :actual_rank]
+            raw_scores = (decoded_u**2).sum(dim=1)
+            total_score = float(raw_scores.sum().item())
+            if total_score <= eps:
+                normalized = torch.full_like(raw_scores, 1.0 / max(len(raw_scores), 1))
+            else:
+                normalized = raw_scores / total_score
+        else:
+            raw_scores = normalized.clone()
+
+        for local_pos, label in enumerate(payload.labels):
+            local_probability = float(normalized[local_pos].item()) if len(normalized) else 0.0
+            records.append(
+                {
+                    "client_id": payload.client_id,
+                    "task_id": payload.task_id,
+                    "source_task_id": payload.task_id,
+                    "source_client_id": payload.client_id,
+                    "dataset_index": payload.dataset_indices[local_pos],
+                    "sample_id": payload.sample_ids[local_pos],
+                    "label": int(label),
+                    "leverage_score": local_probability,
+                    "raw_leverage_score": float(raw_scores[local_pos].item()) if len(raw_scores) else 0.0,
+                    "client_sampling_probability": local_probability,
+                }
+            )
+
+    return ClientLocalGDRResult(
+        records=records,
+        client_singular_values=client_singular_values,
+        rank=max(observed_ranks, default=0),
+    )
+
+
 def attach_sampling_probabilities(
     records: list[dict[str, Any]],
     score_key: str = "raw_leverage_score",
@@ -266,6 +332,7 @@ def sample_records_by_probability(
         record["sampling_weight"] = math.sqrt(1.0 / (sample_size * probability))
         selected.append(record)
     return selected
+
 
 def sample_records_by_class_probability(
     records: list[dict[str, Any]],
@@ -347,6 +414,86 @@ def sample_records_by_class_probability(
             record["sampling_probability"] = float(probability)
             record["class_sampling_budget"] = int(sample_size)
             record["sampling_weight"] = math.sqrt(1.0 / (sample_size * probability))
+            selected.append(record)
+
+    return selected
+
+
+def sample_records_official_style(
+    records: list[dict[str, Any]],
+    total_budget: int,
+    num_clients: int,
+    seed: int,
+    eps: float = 1e-12,
+) -> list[dict[str, Any]]:
+    if total_budget <= 0 or not records or num_clients <= 0:
+        return []
+
+    records_by_client = group_records_by_client(records)
+    min_samples_per_client = total_budget // num_clients
+    selected: list[dict[str, Any]] = []
+
+    global_records: list[dict[str, Any]] = []
+    global_probabilities: list[float] = []
+
+    for client_offset in range(num_clients):
+        client_records = records_by_client.get(client_offset, [])
+        if not client_records:
+            continue
+
+        client_probs = torch.tensor(
+            [
+                max(float(record.get("client_sampling_probability", 0.0)), 0.0)
+                for record in client_records
+            ],
+            dtype=torch.float64,
+        )
+        prob_sum = float(client_probs.sum().item())
+        if prob_sum <= eps:
+            client_probs = torch.full_like(client_probs, 1.0 / len(client_records))
+        else:
+            client_probs = client_probs / prob_sum
+
+        sample_size = min_samples_per_client
+        if sample_size > 0:
+            generator = torch.Generator()
+            generator.manual_seed(seed + client_offset)
+            sampled_indices = torch.multinomial(
+                client_probs,
+                sample_size,
+                replacement=True,
+                generator=generator,
+            )
+            for sampled_index in sampled_indices.tolist():
+                record = dict(client_records[sampled_index])
+                record["sampling_probability"] = float(client_probs[sampled_index].item())
+                selected.append(record)
+
+        client_weight = 1.0 / num_clients
+        for record, probability in zip(client_records, client_probs.tolist(), strict=True):
+            global_records.append(record)
+            global_probabilities.append(float(probability) * client_weight)
+
+    remaining_budget = total_budget - len(selected)
+    if remaining_budget > 0 and global_records:
+        probabilities = torch.tensor(global_probabilities, dtype=torch.float64)
+        prob_sum = float(probabilities.sum().item())
+        if prob_sum <= eps:
+            probabilities = torch.full_like(probabilities, 1.0 / len(global_records))
+        else:
+            probabilities = probabilities / prob_sum
+
+        generator = torch.Generator()
+        generator.manual_seed(seed + 99_999)
+        sampled_indices = torch.multinomial(
+            probabilities,
+            remaining_budget,
+            replacement=True,
+            generator=generator,
+        )
+        for sampled_index in sampled_indices.tolist():
+            record = dict(global_records[sampled_index])
+            record["sampling_probability"] = float(probabilities[sampled_index].item())
             selected.append(record)
 
     return selected

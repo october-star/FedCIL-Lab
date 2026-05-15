@@ -266,3 +266,87 @@ def sample_records_by_probability(
         record["sampling_weight"] = math.sqrt(1.0 / (sample_size * probability))
         selected.append(record)
     return selected
+
+def sample_records_by_class_probability(
+    records: list[dict[str, Any]],
+    total_budget: int,
+    seed: int,
+    score_key: str = "raw_leverage_score",
+    eps: float = 1e-12,
+) -> list[dict[str, Any]]:
+    if total_budget <= 0 or not records:
+        return []
+
+    records_by_class: dict[int, list[dict[str, Any]]] = {}
+    for record in records:
+        records_by_class.setdefault(int(record["label"]), []).append(record)
+
+    classes = sorted(records_by_class)
+    if not classes:
+        return []
+
+    total_budget = min(total_budget, len(records))
+    num_classes = len(classes)
+    base_quota = total_budget // num_classes
+    remainder = total_budget % num_classes
+
+    # First pass: assign a near-uniform per-class quota, capped by class size.
+    class_quotas: dict[int, int] = {}
+    leftover_budget = 0
+    for class_index, label in enumerate(classes):
+        target_quota = base_quota + (1 if class_index < remainder else 0)
+        class_size = len(records_by_class[label])
+        assigned_quota = min(target_quota, class_size)
+        class_quotas[label] = assigned_quota
+        leftover_budget += target_quota - assigned_quota
+
+    # Second pass: redistribute leftover budget to classes with remaining capacity.
+    while leftover_budget > 0:
+        progress = False
+        for label in classes:
+            if leftover_budget <= 0:
+                break
+            remaining_capacity = len(records_by_class[label]) - class_quotas[label]
+            if remaining_capacity <= 0:
+                continue
+            class_quotas[label] += 1
+            leftover_budget -= 1
+            progress = True
+        if not progress:
+            break
+
+    selected: list[dict[str, Any]] = []
+    for class_offset, label in enumerate(classes):
+        class_records = records_by_class[label]
+        class_budget = class_quotas[label]
+        if class_budget <= 0:
+            continue
+
+        annotated = attach_sampling_probabilities(
+            class_records,
+            score_key=score_key,
+            eps=eps,
+        )
+        sample_size = min(class_budget, len(annotated))
+        probabilities = torch.tensor(
+            [float(record["sampling_probability"]) for record in annotated],
+            dtype=torch.float64,
+        )
+        generator = torch.Generator()
+        generator.manual_seed(seed + class_offset)
+        selected_indices = torch.multinomial(
+            probabilities,
+            sample_size,
+            replacement=False,
+            generator=generator,
+        )
+
+        for selected_index in selected_indices.tolist():
+            record = dict(annotated[selected_index])
+            probability = max(float(record["sampling_probability"]), eps)
+            record["sampling_probability"] = float(probability)
+            record["class_sampling_budget"] = int(sample_size)
+            record["sampling_weight"] = math.sqrt(1.0 / (sample_size * probability))
+            selected.append(record)
+
+    return selected

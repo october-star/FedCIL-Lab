@@ -12,7 +12,7 @@ from src.gdr.features import build_client_feature_payload, sample_orthogonal_mat
 from src.gdr.server import (
     compute_leverage_scores,
     group_records_by_client,
-    sample_records_by_probability,
+    sample_records_by_class_probability,
 )
 from src.methods.base_method import BaseMethod
 from src.replay.buffer import ReplayBuffer
@@ -68,7 +68,7 @@ class LocalReplayGDRPaper(BaseMethod):
             "gdr_feature_samples": self.gdr_feature_samples,
             "gdr_class_wise": self.gdr_class_wise,
             "gdr_candidate_pool": "current_task_only",
-            "gdr_selection_mode": "global_probability_sampling",
+            "gdr_selection_mode": "class_balanced_probability_sampling",
             "gdr_encryption": "P_k_X_Q",
             "replay_weighting": "sqrt(1 / (n_s * p_x))",
             "tasks": [],
@@ -141,12 +141,12 @@ class LocalReplayGDRPaper(BaseMethod):
                         }
                     )
 
-            gdr_result = self._update_buffers_with_gdr(task_id)
 
             final_test = self.dataset_manager.get_seen_test_subset(task_id)
             final_acc = self.evaluate(self.model, final_test)
             print(f"[Task {task_id}] Final Acc: {final_acc:.4f}")
             task_history["final_seen_acc"] = final_acc
+            gdr_result = self._update_buffers_with_gdr(task_id)
             task_history["buffer_after"] = self._buffer_summaries()
             task_history["gdr"] = gdr_result
             history["tasks"].append(task_history)
@@ -167,7 +167,7 @@ class LocalReplayGDRPaper(BaseMethod):
     def _global_sampling_budget(self) -> int:
         if self.samples_per_task is not None:
             return self.samples_per_task * self.num_clients
-        return self.buffer_size
+        return self.buffer_size * self.num_clients
 
     def _update_buffers_with_gdr(self, task_id: int) -> dict:
         from src.gdr.visualize import plot_buffer_class_distribution, plot_leverage_scores
@@ -207,7 +207,7 @@ class LocalReplayGDRPaper(BaseMethod):
             rank=self.gdr_rank,
             class_wise=self.gdr_class_wise,
         )
-        selected_records = sample_records_by_probability(
+        selected_records = sample_records_by_class_probability(
             result.records,
             total_budget=self._global_sampling_budget(),
             seed=self.seed + task_id,
@@ -245,10 +245,10 @@ class LocalReplayGDRPaper(BaseMethod):
             "num_scored_samples": len(result.records),
             "num_selected_samples": len(selected_records),
             "global_sampling_budget": self._global_sampling_budget(),
-            "selection_mode": "global_probability_sampling",
+            "selection_mode": "class_balanced_probability_sampling",
             "candidate_pool": "current_task_only",
             "encryption": "P_k_X_Q",
-            "sampling_weight_formula": "sqrt(1 / (n_s * p_x))",
+            "sampling_weight_formula": "sqrt(1 / (n_s_class * p_x_class))",
             "leverage_plot": str(leverage_plot),
             "buffer_distribution_plot": str(buffer_plot),
         }

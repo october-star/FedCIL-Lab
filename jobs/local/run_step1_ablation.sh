@@ -46,39 +46,46 @@ COMMON_ARGS=(
   --no_download
 )
 
-echo "==> [A1] Finetune"
-python scripts/train.py \
-  --method finetune \
-  "${COMMON_ARGS[@]}" \
-  --run_name A1_finetune_cifar10_seed1_beta05
+# echo "==> [A1] Finetune"
+# python scripts/train.py \
+#   --method finetune \
+#   "${COMMON_ARGS[@]}" \
+#   --run_name A1_finetune_cifar10_seed1_beta05
 
-echo "==> [A2] Local Replay"
+# echo "==> [A2] Local Replay"
+# python scripts/train.py \
+#   --method local_replay \
+#   "${COMMON_ARGS[@]}" \
+#   --buffer_size "$BUFFER_SIZE" \
+#   --run_name A2_local_replay_cifar10_seed1_beta05
+
+# echo "==> [A3] Local Replay + GDR"
+# python scripts/train.py \
+#   --method local_replay_gdr \
+#   "${COMMON_ARGS[@]}" \
+#   --buffer_size "$BUFFER_SIZE" \
+#   --run_name A3_local_replay_gdr_cifar10_seed1_beta05
+
+# echo "==> [A4] Local Replay + TTS"
+# python scripts/train.py \
+#   --method local_replay_tts \
+#   "${COMMON_ARGS[@]}" \
+#   --buffer_size "$BUFFER_SIZE" \
+#   --run_name A4_local_replay_tts_cifar10_seed1_beta05
+
+# echo "==> [A5] FedCBDR (GDR + TTS)"
+# python scripts/train.py \
+#   --method local_replay_gdr_tts \
+#   "${COMMON_ARGS[@]}" \
+#   --buffer_size "$BUFFER_SIZE" \
+#   --run_name A5_fedcbdr_cifar10_seed1_beta05
+
+echo "==> [A7] FedCBDR (GDR + TTS + class_balanced)"
 python scripts/train.py \
-  --method local_replay \
+  --method local_replay_gdr_tts_paper \
   "${COMMON_ARGS[@]}" \
   --buffer_size "$BUFFER_SIZE" \
-  --run_name A2_local_replay_cifar10_seed1_beta05
-
-echo "==> [A3] Local Replay + GDR"
-python scripts/train.py \
-  --method local_replay_gdr \
-  "${COMMON_ARGS[@]}" \
-  --buffer_size "$BUFFER_SIZE" \
-  --run_name A3_local_replay_gdr_cifar10_seed1_beta05
-
-echo "==> [A4] Local Replay + TTS"
-python scripts/train.py \
-  --method local_replay_tts \
-  "${COMMON_ARGS[@]}" \
-  --buffer_size "$BUFFER_SIZE" \
-  --run_name A4_local_replay_tts_cifar10_seed1_beta05
-
-echo "==> [A5] FedCBDR (GDR + TTS)"
-python scripts/train.py \
-  --method local_replay_gdr_tts \
-  "${COMMON_ARGS[@]}" \
-  --buffer_size "$BUFFER_SIZE" \
-  --run_name A5_fedcbdr_cifar10_seed1_beta05
+  --run_name A7_fedcbdr_paper_cifar10_seed1_beta05
 
 echo "==> Step 1 ablation finished"
 echo "==> Summarizing results"

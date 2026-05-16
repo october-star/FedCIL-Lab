@@ -80,12 +80,12 @@ COMMON_ARGS=(
 #   --buffer_size "$BUFFER_SIZE" \
 #   --run_name A5_fedcbdr_cifar10_seed1_beta05
 
-echo "==> [A8] FedCBDR (GDR + TTS + class_balanced)"
+echo "==> [A9] FedCBDR (GDR + TTS + git)"
 python scripts/train.py \
   --method local_replay_gdr_tts_paper \
   "${COMMON_ARGS[@]}" \
   --buffer_size "$BUFFER_SIZE" \
-  --run_name A8_fedcbdr_paper_cifar10_seed1_beta05
+  --run_name A9_fedcbdr_paper_cifar10_seed1_beta05
 
 echo "==> Step 1 ablation finished"
 echo "==> Summarizing results"

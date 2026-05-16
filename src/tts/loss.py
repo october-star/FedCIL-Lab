@@ -55,30 +55,26 @@ def tts_cross_entropy(
         old_temp=old_temp,
         new_temp=new_temp,
     )
-    per_sample = F.cross_entropy(scaled_logits, targets, reduction="none")
 
-    external_weights = (
-        sample_weights.to(per_sample.dtype) if sample_weights is not None else None
-    )
-    if old_classes <= 0 or old_classes >= logits.size(1):
-        return _weighted_group_mean(per_sample, external_weights)
-
-    old_mask = targets < old_classes
-    new_mask = ~old_mask
-    loss = per_sample.new_tensor(0.0)
-
-    if old_mask.any():
-        old_losses = per_sample[old_mask]
-        old_sample_weights = (
-            external_weights[old_mask] if external_weights is not None else None
+    # Match the original B.py implementation: after scaling the old/new logits
+    # columns, apply a second sample-wise temperature to the full row.
+    if 0 < old_classes < logits.size(1):
+        is_old_sample = targets < old_classes
+        sample_temps = torch.where(
+            is_old_sample,
+            torch.full_like(targets, old_temp, dtype=scaled_logits.dtype),
+            torch.full_like(targets, new_temp, dtype=scaled_logits.dtype),
+        ).unsqueeze(1)
+        scaled_logits = scaled_logits / sample_temps
+        task_weights = torch.where(
+            is_old_sample,
+            torch.full_like(targets, old_weight, dtype=scaled_logits.dtype),
+            torch.full_like(targets, new_weight, dtype=scaled_logits.dtype),
         )
-        loss = loss + old_weight * _weighted_group_mean(old_losses, old_sample_weights)
+    else:
+        task_weights = torch.ones_like(targets, dtype=scaled_logits.dtype)
 
-    if new_mask.any():
-        new_losses = per_sample[new_mask]
-        new_sample_weights = (
-            external_weights[new_mask] if external_weights is not None else None
-        )
-        loss = loss + new_weight * _weighted_group_mean(new_losses, new_sample_weights)
-
-    return loss
+    losses = F.cross_entropy(scaled_logits, targets, reduction="none")
+    if sample_weights is not None:
+        task_weights = task_weights * sample_weights.to(task_weights.dtype)
+    return (losses * task_weights).mean()

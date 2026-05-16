@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import copy
+import math
+from collections import Counter
 from functools import partial
 from pathlib import Path
 
-from torch.utils.data import ConcatDataset
+from torch.utils.data import ConcatDataset, Dataset
 
-from src.data.weighted_dataset import SampleWeightDataset
 from src.federated.aggregator import fedavg
 from src.federated.client import Client
 from src.gdr.features import build_client_feature_payload, sample_orthogonal_matrix
@@ -16,8 +17,27 @@ from src.gdr.server import (
     sample_records_official_style,
 )
 from src.methods.base_method import BaseMethod
-from src.replay.buffer import ReplayBuffer
 from src.tts.loss import tts_cross_entropy
+
+
+class IndexedSelectionDataset(Dataset):
+    """
+    Dataset view backed by an explicit list of indices.
+
+    Unlike torch.utils.data.Subset, this keeps duplicate indices, which matches
+    the original B.py sampling behavior where official GDR sampling is done with
+    replacement.
+    """
+
+    def __init__(self, dataset: Dataset, indices: list[int]) -> None:
+        self.dataset = dataset
+        self.indices = [int(index) for index in indices]
+
+    def __len__(self) -> int:
+        return len(self.indices)
+
+    def __getitem__(self, index: int):
+        return self.dataset[self.indices[index]]
 
 
 class LocalReplayGDRTTSPaper(BaseMethod):
@@ -56,9 +76,8 @@ class LocalReplayGDRTTSPaper(BaseMethod):
         self.old_weight = old_weight
         self.new_weight = new_weight
         self.clients = [Client(self.device) for _ in range(self.num_clients)]
-        self.buffers = [
-            ReplayBuffer(capacity=buffer_size, seed=seed + client_id)
-            for client_id in range(self.num_clients)
+        self.retained_datasets: list[list[Dataset]] = [
+            [] for _ in range(self.num_clients)
         ]
 
     def train(self) -> dict:
@@ -96,7 +115,7 @@ class LocalReplayGDRTTSPaper(BaseMethod):
                 "old_classes": old_classes,
                 "new_classes": len(task_classes),
                 "rounds": [],
-                "buffer_before": self._buffer_summaries(),
+                "buffer_before": self._retained_summaries(),
             }
 
             loss_fn = None
@@ -114,15 +133,13 @@ class LocalReplayGDRTTSPaper(BaseMethod):
                 local_states = []
                 sample_counts = []
                 losses = []
+                round_lr = self._round_lr(round_id)
 
                 for client_id in range(self.num_clients):
                     current_subset = self.dataset_manager.get_train_subset(
                         task_id, client_id
                     )
-                    train_dataset = self._compose_train_dataset(
-                        current_subset=current_subset,
-                        buffer=self.buffers[client_id],
-                    )
+                    train_dataset = self._compose_train_dataset(current_subset, client_id)
                     if len(train_dataset) < 2:
                         continue
 
@@ -132,7 +149,7 @@ class LocalReplayGDRTTSPaper(BaseMethod):
                         dataset=train_dataset,
                         batch_size=self.batch_size,
                         epochs=self.local_epochs,
-                        lr=self.lr,
+                        lr=round_lr,
                         loss_fn=loss_fn,
                     )
 
@@ -144,55 +161,59 @@ class LocalReplayGDRTTSPaper(BaseMethod):
                     raise RuntimeError(f"No client data found for task {task_id}.")
 
                 total_samples = sum(sample_counts)
-                weights = [count / total_samples for count in sample_counts]
+                weights = [1.0 / len(local_states)] * len(local_states)
                 self.model.load_state_dict(fedavg(local_states, weights))
 
-                if round_id % 5 == 0 or round_id == self.rounds - 1:
-                    test_set = self.dataset_manager.get_seen_test_subset(task_id)
-                    acc = self.evaluate(self.model, test_set)
-                    avg_loss = sum(losses) / len(losses)
-                    print(
-                        f"[Task {task_id}][Round {round_id}] "
-                        f"Loss: {avg_loss:.4f} Acc: {acc:.4f}"
-                    )
-                    task_history["rounds"].append(
-                        {
-                            "round_id": round_id,
-                            "loss": avg_loss,
-                            "seen_acc": acc,
-                            "num_clients": len(local_states),
-                            "num_samples": total_samples,
-                        }
-                    )
+                test_set = self.dataset_manager.get_seen_test_subset(task_id)
+                acc = self.evaluate(self.model, test_set)
+                avg_loss = sum(losses) / len(losses)
+                print(
+                    f"[Task {task_id}][Round {round_id}] "
+                    f"Loss: {avg_loss:.4f} Acc: {acc:.4f}"
+                )
+                task_history["rounds"].append(
+                    {
+                        "round_id": round_id,
+                        "loss": avg_loss,
+                        "seen_acc": acc,
+                        "num_clients": len(local_states),
+                        "num_samples": total_samples,
+                    }
+                )
 
             final_test = self.dataset_manager.get_seen_test_subset(task_id)
             final_acc = self.evaluate(self.model, final_test)
             print(f"[Task {task_id}] Final Acc: {final_acc:.4f}")
             task_history["final_seen_acc"] = final_acc
-            gdr_result = self._update_buffers_with_gdr(task_id)
-            task_history["buffer_after"] = self._buffer_summaries()
+            gdr_result = self._update_retained_datasets_with_gdr(
+                task_id=task_id,
+                new_classes=len(task_classes),
+            )
+            task_history["buffer_after"] = self._retained_summaries()
             task_history["gdr"] = gdr_result
             history["tasks"].append(task_history)
 
-        history["buffer_stats"] = self._buffer_summaries()
+        history["buffer_stats"] = self._retained_summaries()
         return history
 
-    def _compose_train_dataset(self, current_subset, buffer: ReplayBuffer):
-        if len(buffer) == 0:
-            return SampleWeightDataset(current_subset, default_weight=1.0)
-        return ConcatDataset(
-            [
-                SampleWeightDataset(current_subset, default_weight=1.0),
-                SampleWeightDataset(buffer),
-            ]
-        )
+    def _compose_train_dataset(self, current_subset: Dataset, client_id: int) -> Dataset:
+        retained = self.retained_datasets[client_id]
+        if not retained:
+            return current_subset
+        return ConcatDataset([current_subset, *retained])
 
-    def _global_sampling_budget(self) -> int:
+    def _global_sampling_budget(self, new_classes: int) -> int:
         if self.samples_per_task is not None:
             return self.samples_per_task * self.num_clients
-        return self.buffer_size * self.num_clients
+        return new_classes * self.buffer_size
 
-    def _update_buffers_with_gdr(self, task_id: int) -> dict:
+    def _round_lr(self, round_id: int, eta_min: float = 1e-3) -> float:
+        if self.rounds <= 1:
+            return self.lr
+        cosine = (1.0 + math.cos(math.pi * round_id / self.rounds)) / 2.0
+        return eta_min + (self.lr - eta_min) * cosine
+
+    def _update_retained_datasets_with_gdr(self, task_id: int, new_classes: int) -> dict:
         from src.gdr.visualize import plot_buffer_class_distribution, plot_leverage_scores
 
         if self.gdr_class_wise:
@@ -229,20 +250,28 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             payloads,
             rank=self.gdr_rank,
         )
+        total_budget = self._global_sampling_budget(new_classes)
         selected_records = sample_records_official_style(
             result.records,
-            total_budget=self._global_sampling_budget(),
+            total_budget=total_budget,
             num_clients=self.num_clients,
             seed=self.seed + task_id,
         )
         records_by_client = group_records_by_client(selected_records)
 
-        for client_id, buffer in enumerate(self.buffers):
-            buffer.add_selected_records(
-                current_datasets[client_id],
-                records=records_by_client.get(client_id, []),
-                task_id=task_id,
-                client_id=client_id,
+        for client_id in range(self.num_clients):
+            client_records = records_by_client.get(client_id, [])
+            if not client_records:
+                continue
+
+            selected_indices = [
+                int(record["dataset_index"]) for record in client_records
+            ]
+            self.retained_datasets[client_id].append(
+                IndexedSelectionDataset(
+                    current_datasets[client_id],
+                    selected_indices,
+                )
             )
 
         leverage_plot = self.figure_dir / f"{self.run_name}_task{task_id}_leverage.png"
@@ -255,7 +284,7 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             title=f"{self.run_name} task {task_id} leverage scores",
         )
         plot_buffer_class_distribution(
-            self._buffer_summaries(),
+            self._retained_summaries(),
             buffer_plot,
             title=f"{self.run_name} task {task_id} buffer class distribution",
         )
@@ -268,7 +297,7 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             "class_singular_values": None,
             "num_scored_samples": len(result.records),
             "num_selected_samples": len(selected_records),
-            "global_sampling_budget": self._global_sampling_budget(),
+            "global_sampling_budget": total_budget,
             "selection_mode": "official_client_balanced_sampling",
             "candidate_pool": "current_task_only",
             "encryption": "P_k_X_Q",
@@ -277,8 +306,22 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             "buffer_distribution_plot": str(buffer_plot),
         }
 
+    def _retained_summaries(self) -> dict[str, dict]:
+        summaries: dict[str, dict] = {}
+        for client_id, datasets in enumerate(self.retained_datasets):
+            counts: Counter[int] = Counter()
+            total = 0
+            for dataset in datasets:
+                total += len(dataset)
+                for index in range(len(dataset)):
+                    label = int(dataset[index][1])
+                    counts[label] += 1
+            summaries[f"client_{client_id}"] = {
+                "capacity": self.buffer_size,
+                "num_samples": total,
+                "class_counts": dict(sorted(counts.items())),
+            }
+        return summaries
+
     def _buffer_summaries(self) -> dict[str, dict]:
-        return {
-            f"client_{client_id}": buffer.summary()
-            for client_id, buffer in enumerate(self.buffers)
-        }
+        return self._retained_summaries()

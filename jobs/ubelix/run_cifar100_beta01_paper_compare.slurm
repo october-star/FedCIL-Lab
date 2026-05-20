@@ -23,6 +23,6 @@ echo "Python: $(which python)"
 echo "Start time: $(date)"
 
 #bash jobs/local/prepare_multiseed_cifar100.sh
-bash jobs/local/run_cifar100_beta01_paper_compare.sh
+bash jobs/local/run_cifar100_beta01_compare.sh
 
 echo "Finished time: $(date)"

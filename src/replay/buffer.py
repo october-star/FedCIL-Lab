@@ -19,18 +19,19 @@ class ReplaySample:
 
 
 class ReplayBuffer(Dataset):
-    """
-    Per-client replay buffer with class-balanced capacity management.
-
-    The buffer stores tensors and remapped incremental labels. Metadata is kept
-    alongside samples so future GDR code can attach or return sample indices.
-    """
-
-    def __init__(self, capacity: int, seed: int = 0) -> None:
+    def __init__(
+        self,
+        capacity: int,
+        seed: int = 0,
+        balance_classes: bool = True,
+        use_scores: bool = False,
+    ) -> None:
         if capacity < 0:
             raise ValueError(f"capacity must be non-negative, got {capacity}")
         self.capacity = capacity
         self.rng = random.Random(seed)
+        self.balance_classes = balance_classes
+        self.use_scores = use_scores
         self.samples: list[ReplaySample] = []
 
     def __len__(self) -> int:
@@ -65,6 +66,7 @@ class ReplayBuffer(Dataset):
             x, y = dataset[dataset_index]
             if not torch.is_tensor(x):
                 x = torch.as_tensor(x)
+
             self.samples.append(
                 ReplaySample(
                     x=x.detach().cpu(),
@@ -91,7 +93,12 @@ class ReplayBuffer(Dataset):
         if self.capacity == 0 or len(dataset) == 0 or not records:
             return
 
-        selected_records = self._class_balanced_records(records, max_samples)
+        selected_records = (
+            records
+            if max_samples is None
+            else self._class_balanced_records(records, max_samples)
+        )
+
         for record in selected_records:
             dataset_index = int(record["dataset_index"])
             x, y = dataset[dataset_index]
@@ -105,9 +112,12 @@ class ReplayBuffer(Dataset):
                 "sample_id": int(
                     record.get("sample_id", resolve_sample_id(dataset, dataset_index))
                 ),
-                "leverage_score": float(record["leverage_score"]),
-                "raw_leverage_score": float(record["raw_leverage_score"]),
+                "leverage_score": float(record.get("leverage_score", 0.0)),
+                "raw_leverage_score": float(record.get("raw_leverage_score", 0.0)),
+                "sampling_probability": float(record.get("sampling_probability", 0.0)),
+                "sampling_weight": float(record.get("sampling_weight", 1.0)),
             }
+
             self.samples.append(
                 ReplaySample(
                     x=x.detach().cpu(),
@@ -148,6 +158,7 @@ class ReplayBuffer(Dataset):
                 "sampling_probability": float(record.get("sampling_probability", 0.0)),
                 "sampling_weight": float(record.get("sampling_weight", 1.0)),
             }
+
             self.samples.append(
                 ReplaySample(
                     x=x.detach().cpu(),
@@ -181,7 +192,7 @@ class ReplayBuffer(Dataset):
         else:
             selected_records = sorted(
                 records,
-                key=lambda record: float(record["raw_leverage_score"]),
+                key=lambda record: float(record.get("raw_leverage_score", 0.0)),
                 reverse=True,
             )[:budget]
 
@@ -199,9 +210,10 @@ class ReplayBuffer(Dataset):
                 "sample_id": int(
                     record.get("sample_id", resolve_sample_id(dataset, dataset_index))
                 ),
-                "leverage_score": float(record["leverage_score"]),
-                "raw_leverage_score": float(record["raw_leverage_score"]),
+                "leverage_score": float(record.get("leverage_score", 0.0)),
+                "raw_leverage_score": float(record.get("raw_leverage_score", 0.0)),
             }
+
             new_samples.append(
                 ReplaySample(
                     x=x.detach().cpu(),
@@ -211,6 +223,7 @@ class ReplayBuffer(Dataset):
             )
 
         self.samples = new_samples
+        self._rebalance()
 
     def class_counts(self) -> dict[int, int]:
         counts = Counter(sample.y for sample in self.samples)
@@ -221,16 +234,20 @@ class ReplayBuffer(Dataset):
             "capacity": self.capacity,
             "num_samples": len(self.samples),
             "class_counts": self.class_counts(),
+            "balance_classes": self.balance_classes,
+            "use_scores": self.use_scores,
         }
 
     def gdr_index_payload(self) -> list[dict[str, Any]]:
-        """
-        Placeholder interface for future GDR index feedback.
-        """
         return [sample.metadata for sample in self.samples]
 
     def _rebalance(self) -> None:
         if len(self.samples) <= self.capacity:
+            return
+
+        if not self.balance_classes:
+            self.rng.shuffle(self.samples)
+            self.samples = self.samples[: self.capacity]
             return
 
         by_class: dict[int, list[ReplaySample]] = {}
@@ -238,13 +255,16 @@ class ReplayBuffer(Dataset):
             by_class.setdefault(sample.y, []).append(sample)
 
         for class_samples in by_class.values():
-            class_samples.sort(
-                key=lambda sample: sample.metadata.get(
-                    "raw_leverage_score",
-                    sample.metadata.get("leverage_score", 0.0),
-                ),
-                reverse=True,
-            )
+            if self.use_scores:
+                class_samples.sort(
+                    key=lambda sample: sample.metadata.get(
+                        "raw_leverage_score",
+                        sample.metadata.get("leverage_score", 0.0),
+                    ),
+                    reverse=True,
+                )
+            else:
+                self.rng.shuffle(class_samples)
 
         classes = sorted(by_class)
         kept: list[ReplaySample] = []
@@ -276,16 +296,17 @@ class ReplayBuffer(Dataset):
 
         for class_records in by_class.values():
             class_records.sort(
-                key=lambda record: float(record["raw_leverage_score"]),
+                key=lambda record: float(record.get("raw_leverage_score", 0.0)),
                 reverse=True,
             )
 
         classes = sorted(by_class)
         selected: list[dict[str, Any]] = []
+
         if len(classes) >= limit:
             ranked_heads = sorted(
                 (class_records[0] for class_records in by_class.values() if class_records),
-                key=lambda record: float(record["raw_leverage_score"]),
+                key=lambda record: float(record.get("raw_leverage_score", 0.0)),
                 reverse=True,
             )
             return ranked_heads[:limit]
@@ -297,18 +318,26 @@ class ReplayBuffer(Dataset):
 
         if len(selected) < limit:
             selected_keys = {
-                (int(record["client_id"]), int(record["sample_id"]))
+                (
+                    int(record.get("client_id", record.get("source_client_id", -1))),
+                    int(record.get("sample_id", record.get("dataset_index", -1))),
+                )
                 for record in selected
             }
+
             remaining = [
                 record
                 for class_id in classes
                 for record in by_class[class_id][per_class:]
-                if (int(record["client_id"]), int(record["sample_id"]))
+                if (
+                    int(record.get("client_id", record.get("source_client_id", -1))),
+                    int(record.get("sample_id", record.get("dataset_index", -1))),
+                )
                 not in selected_keys
             ]
+
             remaining.sort(
-                key=lambda record: float(record["raw_leverage_score"]),
+                key=lambda record: float(record.get("raw_leverage_score", 0.0)),
                 reverse=True,
             )
             selected.extend(remaining[: limit - len(selected)])

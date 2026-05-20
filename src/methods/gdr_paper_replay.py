@@ -54,7 +54,7 @@ class LocalReplayGDRPaper(BaseMethod):
         self.run_name = run_name
         self.clients = [Client(self.device) for _ in range(self.num_clients)]
         self.buffers = [
-            ReplayBuffer(capacity=buffer_size, seed=seed + client_id)
+            ReplayBuffer(capacity=buffer_size, seed=seed + client_id, balance_classes=True, use_scores=True)
             for client_id in range(self.num_clients)
         ]
 
@@ -229,6 +229,9 @@ class LocalReplayGDRPaper(BaseMethod):
             result.records,
             leverage_plot,
             title=f"{self.run_name} task {task_id} leverage scores",
+            selected_records=selected_records,
+            use_raw_score=True,
+            log_scale=False,
         )
         plot_buffer_class_distribution(
             self._buffer_summaries(),
@@ -248,7 +251,7 @@ class LocalReplayGDRPaper(BaseMethod):
             "selection_mode": "official_client_balanced_sampling",
             "candidate_pool": "current_task_only",
             "encryption": "P_k_X_Q",
-            "sampling_weight_formula": "uniform",
+            "sampling_weight_formula": "client_leverage_probability",
             "leverage_plot": str(leverage_plot),
             "buffer_distribution_plot": str(buffer_plot),
         }

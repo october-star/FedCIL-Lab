@@ -53,30 +53,115 @@ def plot_leverage_scores(
     records: list[dict[str, Any]],
     output_path: str | Path,
     title: str,
+    selected_records: list[dict[str, Any]] | None = None,
+    use_raw_score: bool = True,
+    log_scale: bool = False,
 ) -> Path:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    scores = np.array([record["leverage_score"] for record in records], dtype=float)
-    labels = np.array([record["label"] for record in records], dtype=int)
+    if not records:
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        ax.set_title(title)
+        ax.text(0.5, 0.5, "No records", ha="center", va="center")
+        fig.tight_layout()
+        fig.savefig(output_path, dpi=180)
+        plt.close(fig)
+        return output_path
 
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    if len(scores) > 0:
-        order = np.argsort(labels)
-        scatter = ax.scatter(
-            np.arange(len(scores)),
-            scores[order],
-            c=labels[order],
-            s=16,
-            cmap="tab10",
-            alpha=0.8,
+    score_key = (
+        "raw_leverage_score"
+        if use_raw_score
+        else "leverage_score"
+    )
+
+    scores = np.array(
+        [
+            float(record.get(score_key, 0.0))
+            for record in records
+        ],
+        dtype=float,
+    )
+
+    labels = np.array(
+        [int(record["label"]) for record in records],
+        dtype=int,
+    )
+
+    order = np.argsort(labels)
+
+    sorted_scores = scores[order]
+    sorted_labels = labels[order]
+
+    # build selected lookup
+    selected_keys = set()
+    if selected_records is not None:
+        selected_keys = {
+            (
+                int(r["client_id"]),
+                int(r["sample_id"]),
+            )
+            for r in selected_records
+        }
+
+    selected_mask = np.array(
+        [
+            (
+                int(records[idx]["client_id"]),
+                int(records[idx]["sample_id"]),
+            )
+            in selected_keys
+            for idx in order
+        ]
+    )
+
+    x = np.arange(len(sorted_scores))
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+
+    scatter = ax.scatter(
+        x,
+        sorted_scores,
+        c=sorted_labels,
+        cmap="tab20",
+        s=16,
+        alpha=0.55,
+    )
+
+    # overlay selected samples
+    if selected_mask.any():
+        ax.scatter(
+            x[selected_mask],
+            sorted_scores[selected_mask],
+            facecolors="none",
+            edgecolors="red",
+            linewidths=1.3,
+            s=60,
+            label="Selected samples",
         )
-        fig.colorbar(scatter, ax=ax, label="Class index")
+        ax.legend()
+
+    if log_scale:
+        ax.set_yscale("log")
+
+    fig.colorbar(
+        scatter,
+        ax=ax,
+        label="Class index",
+    )
+
     ax.set_title(title)
     ax.set_xlabel("Samples sorted by class")
-    ax.set_ylabel("Normalized leverage score")
-    ax.set_ylim(-0.05, 1.05)
+
+    ylabel = (
+        "Raw leverage score"
+        if use_raw_score
+        else "Normalized leverage score"
+    )
+    ax.set_ylabel(ylabel)
+
     fig.tight_layout()
     fig.savefig(output_path, dpi=180)
     plt.close(fig)
+
     return output_path

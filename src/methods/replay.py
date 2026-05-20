@@ -32,7 +32,7 @@ class LocalReplay(BaseMethod):
         self.samples_per_task = samples_per_task
         self.clients = [Client(self.device) for _ in range(self.num_clients)]
         self.buffers = [
-            ReplayBuffer(capacity=buffer_size, seed=seed + client_id)
+            ReplayBuffer(capacity=buffer_size, seed=seed + client_id, balance_classes=True, use_scores=False)
             for client_id in range(self.num_clients)
         ]
 

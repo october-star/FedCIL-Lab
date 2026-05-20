@@ -52,31 +52,104 @@ def plot_buffer_class_distribution(
 def plot_leverage_scores(
     records: list[dict[str, Any]],
     output_path: str | Path,
-    title: str,
-) -> Path:
+    title: str = "Leverage scores",
+    selected_records: list[dict[str, Any]] | None = None,
+    use_raw_score: bool = True,
+    log_scale: bool = False,
+) -> None:
+    """
+    Plot leverage scores and optionally highlight selected replay samples.
+
+    Gray/colored small points: all scored samples
+    Larger points: selected replay samples
+    """
+    if not records:
+        return
+
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    scores = np.array([record["leverage_score"] for record in records], dtype=float)
-    labels = np.array([record["label"] for record in records], dtype=int)
+    scores_key = "raw_leverage_score" if use_raw_score else "leverage_score"
 
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    if len(scores) > 0:
-        order = np.argsort(labels)
-        scatter = ax.scatter(
-            np.arange(len(scores)),
-            scores[order],
-            c=labels[order],
-            s=16,
-            cmap="tab10",
-            alpha=0.8,
+    labels = np.array([int(r["label"]) for r in records])
+    scores = np.array([float(r.get(scores_key, 0.0)) for r in records])
+
+    if log_scale:
+        scores = np.log1p(scores)
+
+    # Sort by class, then by score for clearer visualization
+    order = np.lexsort((scores, labels))
+    labels_sorted = labels[order]
+    scores_sorted = scores[order]
+
+    # Map original record identity to sorted x position
+    record_to_x = {}
+    for x_pos, original_idx in enumerate(order):
+        r = records[int(original_idx)]
+        key = (
+            int(r["client_id"]),
+            int(r["task_id"]),
+            int(r["dataset_index"]),
+            int(r["label"]),
         )
-        fig.colorbar(scatter, ax=ax, label="Class index")
-    ax.set_title(title)
-    ax.set_xlabel("Samples sorted by class")
-    ax.set_ylabel("Normalized leverage score")
-    ax.set_ylim(-0.05, 1.05)
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=180)
-    plt.close(fig)
-    return output_path
+        record_to_x[key] = x_pos
+
+    x_all = np.arange(len(records))
+
+    plt.figure(figsize=(12, 7))
+
+    scatter = plt.scatter(
+        x_all,
+        scores_sorted,
+        color="lightgray",
+        s=5,
+        alpha=0.15,
+    )
+
+    if selected_records:
+        selected_x = []
+        selected_y = []
+        selected_labels = []
+
+        for r in selected_records:
+            key = (
+                int(r["client_id"]),
+                int(r["task_id"]),
+                int(r["dataset_index"]),
+                int(r["label"]),
+            )
+            if key not in record_to_x:
+                continue
+
+            x_pos = record_to_x[key]
+            selected_x.append(x_pos)
+
+            score = float(r.get(scores_key, 0.0))
+            if log_scale:
+                score = np.log1p(score)
+            selected_y.append(score)
+            selected_labels.append(int(r["label"]))
+
+        if selected_x:
+            plt.scatter(
+                selected_x,
+                selected_y,
+                c=selected_labels,
+                cmap="tab10",
+                s=40,
+                marker="x",
+                linewidths=1.8,
+                label="selected",
+            )
+
+    plt.colorbar(scatter, label="Class index")
+    plt.xlabel("Samples sorted by class")
+    ylabel = "Raw leverage score" if use_raw_score else "Normalized leverage score"
+    if log_scale:
+        ylabel = f"log(1 + {ylabel})"
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150)
+    plt.close()

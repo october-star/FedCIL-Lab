@@ -9,7 +9,7 @@ from torch.utils.data import ConcatDataset
 from src.federated.aggregator import fedavg
 from src.federated.client import Client
 from src.gdr.features import build_client_feature_payload
-from src.gdr.server import compute_leverage_scores, group_records_by_client
+from src.gdr.server import compute_leverage_scores, group_records_by_client, select_global_class_balanced_records
 from src.methods.base_method import BaseMethod
 from src.replay.buffer import ReplayBuffer
 from src.tts.loss import tts_cross_entropy
@@ -28,12 +28,11 @@ class LocalReplayGDRTTS(BaseMethod):
         seed: int = 0,
         gdr_rank: int = 8,
         gdr_feature_samples: int | None = None,
-        gdr_class_wise: bool = True,
         figure_dir: str | Path = "outputs/figures/gdr",
         run_name: str = "local_replay_gdr_tts",
         old_temp: float = 0.9,
         new_temp: float = 1.1,
-        old_weight: float = 1.1,
+        old_weight: float = 1.2,
         new_weight: float = 0.9,
         **kwargs,
     ) -> None:
@@ -43,7 +42,6 @@ class LocalReplayGDRTTS(BaseMethod):
         self.seed = seed
         self.gdr_rank = gdr_rank
         self.gdr_feature_samples = gdr_feature_samples
-        self.gdr_class_wise = gdr_class_wise
         self.figure_dir = Path(figure_dir)
         self.run_name = run_name
         self.old_temp = old_temp
@@ -52,7 +50,7 @@ class LocalReplayGDRTTS(BaseMethod):
         self.new_weight = new_weight
         self.clients = [Client(self.device) for _ in range(self.num_clients)]
         self.buffers = [
-            ReplayBuffer(capacity=buffer_size, seed=seed + client_id)
+            ReplayBuffer(capacity=buffer_size, seed=seed + client_id,balance_classes=True,use_scores=True)
             for client_id in range(self.num_clients)
         ]
 
@@ -64,7 +62,6 @@ class LocalReplayGDRTTS(BaseMethod):
             "samples_per_task": self.samples_per_task,
             "gdr_rank": self.gdr_rank,
             "gdr_feature_samples": self.gdr_feature_samples,
-            "gdr_class_wise": self.gdr_class_wise,
             "tts": {
                 "old_temp": self.old_temp,
                 "new_temp": self.new_temp,
@@ -90,16 +87,14 @@ class LocalReplayGDRTTS(BaseMethod):
                 "buffer_before": self._buffer_summaries(),
             }
 
-            loss_fn = None
-            if task_id > 0:
-                loss_fn = partial(
-                    tts_cross_entropy,
-                    old_classes=old_classes,
-                    old_temp=self.old_temp,
-                    new_temp=self.new_temp,
-                    old_weight=self.old_weight,
-                    new_weight=self.new_weight,
-                )
+            loss_fn = partial(
+                tts_cross_entropy,
+                old_classes=old_classes,
+                old_temp=self.old_temp,
+                new_temp=self.new_temp,
+                old_weight=self.old_weight,
+                new_weight=self.new_weight,
+            )
 
             for round_id in range(self.rounds):
                 local_states = []
@@ -178,18 +173,14 @@ class LocalReplayGDRTTS(BaseMethod):
         from src.gdr.visualize import plot_buffer_class_distribution, plot_leverage_scores
 
         payloads = []
-        candidate_datasets = {}
+        current_subsets = {}
 
         for client_id in range(self.num_clients):
             current_subset = self.dataset_manager.get_train_subset(task_id, client_id)
-            if self.gdr_class_wise and len(self.buffers[client_id]) > 0:
-                candidate_dataset = ConcatDataset([self.buffers[client_id], current_subset])
-            else:
-                candidate_dataset = current_subset
-            candidate_datasets[client_id] = candidate_dataset
+            current_subsets[client_id] = current_subset
             payloads.append(
                 build_client_feature_payload(
-                    candidate_dataset,
+                    current_subset,
                     client_id=client_id,
                     task_id=task_id,
                     feature_extractor=self.model.backbone,
@@ -199,41 +190,42 @@ class LocalReplayGDRTTS(BaseMethod):
                 )
             )
 
-        result = compute_leverage_scores(
-            payloads,
-            rank=self.gdr_rank,
-            class_wise=self.gdr_class_wise,
+        result = compute_leverage_scores(payloads, rank=self.gdr_rank)
+
+        if self.samples_per_task is None:
+            total_budget = sum(len(subset) for subset in current_subsets.values())
+        else:
+            total_budget = self.samples_per_task * self.num_clients
+
+        selected_records = select_global_class_balanced_records(
+            result.records,
+            total_budget=total_budget,
+            seed=self.seed + task_id,
         )
-        records_by_client = group_records_by_client(result.records)
+
+        records_by_client = group_records_by_client(selected_records)
 
         for client_id, buffer in enumerate(self.buffers):
-            client_records = records_by_client.get(client_id, [])
-            if self.gdr_class_wise:
-                buffer.replace_with_scored_dataset(
-                    candidate_datasets[client_id],
-                    records=client_records,
-                    task_id=task_id,
-                    client_id=client_id,
-                    max_samples=buffer.capacity,
-                    class_wise=True,
-                )
-            else:
-                buffer.add_scored_dataset(
-                    candidate_datasets[client_id],
-                    records=client_records,
-                    task_id=task_id,
-                    client_id=client_id,
-                    max_samples=self.samples_per_task,
-                )
+            buffer.add_scored_dataset(
+                current_subsets[client_id],
+                records=records_by_client.get(client_id, []),
+                task_id=task_id,
+                client_id=client_id,
+                max_samples=None,
+            )
 
         leverage_plot = self.figure_dir / f"{self.run_name}_task{task_id}_leverage.png"
         buffer_plot = (
             self.figure_dir / f"{self.run_name}_task{task_id}_buffer_distribution.png"
         )
+
         plot_leverage_scores(
             result.records,
             leverage_plot,
             title=f"{self.run_name} task {task_id} leverage scores",
+            selected_records=selected_records,
+            use_raw_score=True,
+            log_scale=False,
         )
         plot_buffer_class_distribution(
             self._buffer_summaries(),
@@ -243,9 +235,7 @@ class LocalReplayGDRTTS(BaseMethod):
 
         return {
             "rank": result.rank,
-            "class_wise": result.class_wise,
             "singular_values": result.singular_values,
-            "class_singular_values": result.class_singular_values,
             "num_scored_samples": len(result.records),
             "leverage_plot": str(leverage_plot),
             "buffer_distribution_plot": str(buffer_plot),

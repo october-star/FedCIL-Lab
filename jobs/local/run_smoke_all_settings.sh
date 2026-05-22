@@ -122,11 +122,11 @@ for TASKS in 3 5; do
 done
 
 # ---------------- CIFAR100 ----------------
-#for TASKS in 5 10; do
-#  run_setting cifar100 "$TASKS" 0.1 beta01
-#  run_setting cifar100 "$TASKS" 0.5 beta05
-#  run_setting cifar100 "$TASKS" 1.0 beta10
-#done
+for TASKS in 5 10; do
+  run_setting cifar100 "$TASKS" 0.1 beta01
+  run_setting cifar100 "$TASKS" 0.5 beta05
+  run_setting cifar100 "$TASKS" 1.0 beta10
+done
 
 python scripts/analysis/make_cbd_reproduction_outputs.py \
   --results_dir outputs/results \

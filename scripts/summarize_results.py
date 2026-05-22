@@ -40,7 +40,7 @@ def extract_row(result_path: Path) -> dict[str, object]:
 
 
 def infer_beta_from_partition(partition_path: str) -> str:
-     if "beta100" in partition_path:
+    if "beta100" in partition_path:
         return "10.0"
     if "beta01" in partition_path:
         return "0.1"

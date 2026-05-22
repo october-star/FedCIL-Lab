@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=run_cifar100_beta01_compare
+#SBATCH --job-name=smoke_all_settings
 #SBATCH --output=outputs/logs/%x_%j.out
 #SBATCH --error=outputs/logs/%x_%j.err
 
@@ -22,7 +22,6 @@ echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
 echo "Start time: $(date)"
 
-#bash jobs/local/prepare_multiseed_cifar100.sh
-bash jobs/local/run_cifar100_beta01_compare.sh
+bash jobs/local/run_smoke_all_settings.sh
 
 echo "Finished time: $(date)"

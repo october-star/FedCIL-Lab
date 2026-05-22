@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=diag_c100_sum
-#SBATCH --output=$SCRATCH/FedCIL-Lab/outputs/logs/%x_%j.out
-#SBATCH --error=$SCRATCH/FedCIL-Lab/outputs/logs/%x_%j.err
+#SBATCH --output=outputs/logs/%x_%j.out
+#SBATCH --error=outputs/logs/%x_%j.err
 
 #SBATCH --account=gratis
 #SBATCH --partition=gpu

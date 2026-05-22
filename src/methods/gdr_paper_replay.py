@@ -10,8 +10,8 @@ from src.federated.aggregator import fedavg
 from src.federated.client import Client
 from src.gdr.features import build_client_feature_payload, sample_orthogonal_matrix
 from src.gdr.server import (
-    compute_client_local_leverage_scores,
     group_records_by_client,
+    prepare_paper_sampling_records,
     sample_records_official_style,
 )
 from src.methods.base_method import BaseMethod
@@ -70,7 +70,7 @@ class LocalReplayGDRPaper(BaseMethod):
             "gdr_candidate_pool": "current_task_only",
             "gdr_selection_mode": "official_client_balanced_sampling",
             "gdr_encryption": "P_k_X_Q",
-            "replay_weighting": "uniform",
+            "replay_weighting": "sampling_weight",
             "tasks": [],
         }
 
@@ -201,12 +201,16 @@ class LocalReplayGDRPaper(BaseMethod):
                 )
             )
 
-        result = compute_client_local_leverage_scores(
+        from src.gdr.server import compute_leverage_scores as global_compute_leverage_scores
+
+        result = global_compute_leverage_scores(
             payloads,
             rank=self.gdr_rank,
+            class_wise=False,
         )
+        paper_records = prepare_paper_sampling_records(result.records)
         selected_records = sample_records_official_style(
-            result.records,
+            paper_records,
             total_budget=self._global_sampling_budget(),
             num_clients=self.num_clients,
             seed=self.seed + task_id,
@@ -226,7 +230,7 @@ class LocalReplayGDRPaper(BaseMethod):
             self.figure_dir / f"{self.run_name}_task{task_id}_buffer_distribution.png"
         )
         plot_leverage_scores(
-            result.records,
+            paper_records,
             leverage_plot,
             title=f"{self.run_name} task {task_id} leverage scores",
         )
@@ -239,16 +243,16 @@ class LocalReplayGDRPaper(BaseMethod):
         return {
             "rank": result.rank,
             "class_wise": False,
-            "singular_values": [],
-            "client_singular_values": result.client_singular_values,
+            "singular_values": result.singular_values,
+            "client_singular_values": None,
             "class_singular_values": None,
-            "num_scored_samples": len(result.records),
+            "num_scored_samples": len(paper_records),
             "num_selected_samples": len(selected_records),
             "global_sampling_budget": self._global_sampling_budget(),
             "selection_mode": "official_client_balanced_sampling",
             "candidate_pool": "current_task_only",
             "encryption": "P_k_X_Q",
-            "sampling_weight_formula": "uniform",
+            "sampling_weight_formula": "sqrt(1 / (n_s * p_x))",
             "leverage_plot": str(leverage_plot),
             "buffer_distribution_plot": str(buffer_plot),
         }

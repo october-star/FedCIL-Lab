@@ -146,6 +146,12 @@ class ReplayBuffer(Dataset):
                 ),
                 "raw_leverage_score": float(record.get("raw_leverage_score", 0.0)),
                 "sampling_probability": float(record.get("sampling_probability", 0.0)),
+                "global_sampling_probability": float(
+                    record.get(
+                        "global_sampling_probability",
+                        record.get("sampling_probability", 0.0),
+                    )
+                ),
                 "sampling_weight": float(record.get("sampling_weight", 1.0)),
             }
             self.samples.append(

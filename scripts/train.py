@@ -54,6 +54,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--backbone", default="resnet18", choices=["resnet18"])
+    parser.add_argument(
+        "--norm_layer",
+        default="groupnorm",
+        choices=["batchnorm", "sync_batchnorm", "groupnorm"],
+    )
+    parser.add_argument("--group_norm_groups", type=int, default=32)
     parser.add_argument("--pretrained", action="store_true")
     parser.add_argument("--data_root", default="data/raw")
     parser.add_argument("--no_download", action="store_true")

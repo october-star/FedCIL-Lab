@@ -29,39 +29,32 @@ def _compute_group_scores(
     feature_matrix: torch.Tensor,
     rank: int,
     eps: float,
-) -> tuple[torch.Tensor, torch.Tensor, list[float], int]:
+) -> tuple[torch.Tensor, torch.Tensor, list[float], int, torch.Tensor | None]:
     feature_matrix = feature_matrix.float()
 
     num_samples, feature_dim = feature_matrix.shape
     if num_samples == 0 or feature_dim == 0:
         empty = torch.empty(0, dtype=torch.float32)
-        return empty, empty, [], 0
+        return empty, empty, [], 0, None
 
     if num_samples <= 1:
         scores = torch.ones(num_samples, dtype=torch.float32)
-        return scores, scores, [], 1
-
-    feature_matrix = feature_matrix - feature_matrix.mean(dim=0, keepdim=True)
+        return scores, scores, [], 1, None
 
     max_rank = min(feature_matrix.shape)
     actual_rank = min(rank, max_rank)
     if actual_rank <= 0:
         empty = torch.empty(0, dtype=torch.float32)
-        return empty, empty, [], 0
+        return empty, empty, [], 0, None
 
     u, singular_values, _ = torch.linalg.svd(feature_matrix, full_matrices=False)
     raw_scores = (u[:, :actual_rank] ** 2).sum(dim=1)
-    min_score = raw_scores.min()
-    max_score = raw_scores.max()
-    if float((max_score - min_score).item()) < eps:
-        normalized = torch.ones_like(raw_scores)
-    else:
-        normalized = (raw_scores - min_score) / (max_score - min_score + eps)
     return (
-        normalized,
+        raw_scores,
         raw_scores,
         [float(value.item()) for value in singular_values],
         actual_rank,
+        u[:, :actual_rank],
     )
 
 
@@ -75,16 +68,11 @@ def compute_leverage_scores(
     if not valid_payloads:
         return GDRResult(records=[], singular_values=[], rank=0, class_wise=class_wise)
 
-    if class_wise and any(payload.left_transform is not None for payload in valid_payloads):
-        raise ValueError(
-            "Class-wise GDR is not compatible with left-orthogonal encrypted payloads."
-        )
-
     if not class_wise:
         feature_matrix = torch.cat(
             [payload.features for payload in valid_payloads], dim=0
         )
-        normalized, _, singular_values, actual_rank = _compute_group_scores(
+        leverage_scores, raw_scores, singular_values, actual_rank, _ = _compute_group_scores(
             feature_matrix,
             rank=rank,
             eps=eps,
@@ -96,27 +84,6 @@ def compute_leverage_scores(
                 rank=0,
                 class_wise=False,
             )
-
-        u, _, _ = torch.linalg.svd(feature_matrix.float(), full_matrices=False)
-        decoded_raw_scores = []
-        decoded_segments: list[torch.Tensor] = []
-        offset = 0
-        for payload in valid_payloads:
-            next_offset = offset + len(payload.labels)
-            local_u = u[offset:next_offset, :actual_rank]
-            if payload.left_transform is not None:
-                local_u = payload.left_transform.transpose(0, 1) @ local_u
-            decoded_segments.append(local_u)
-            decoded_raw_scores.append((local_u**2).sum(dim=1))
-            offset = next_offset
-
-        raw_scores = torch.cat(decoded_raw_scores, dim=0)
-        min_score = raw_scores.min()
-        max_score = raw_scores.max()
-        if float((max_score - min_score).item()) < eps:
-            normalized = torch.ones_like(raw_scores)
-        else:
-            normalized = (raw_scores - min_score) / (max_score - min_score + eps)
 
         records = []
         offset = 0
@@ -132,7 +99,7 @@ def compute_leverage_scores(
                         "dataset_index": payload.dataset_indices[local_pos],
                         "sample_id": payload.sample_ids[local_pos],
                         "label": label,
-                        "leverage_score": float(normalized[global_pos].item()),
+                        "leverage_score": float(leverage_scores[global_pos].item()),
                         "raw_leverage_score": float(raw_scores[global_pos].item()),
                     }
                 )
@@ -171,7 +138,7 @@ def compute_leverage_scores(
             [item["feature"] for item in class_items],
             dim=0,
         )
-        normalized, raw_scores, singular_values, actual_rank = _compute_group_scores(
+        leverage_scores, raw_scores, singular_values, actual_rank, _ = _compute_group_scores(
             class_features,
             rank=rank,
             eps=eps,
@@ -181,7 +148,7 @@ def compute_leverage_scores(
 
         for item, normalized_score, raw_score in zip(
             class_items,
-            normalized,
+            leverage_scores,
             raw_scores,
             strict=True,
         ):
@@ -215,6 +182,46 @@ def group_records_by_client(records: list[dict[str, Any]]) -> dict[int, list[dic
     return grouped
 
 
+def prepare_paper_sampling_records(
+    records: list[dict[str, Any]],
+    score_key: str = "raw_leverage_score",
+    eps: float = 1e-12,
+) -> list[dict[str, Any]]:
+    if not records:
+        return []
+
+    annotated: list[dict[str, Any]] = []
+    records_by_client = group_records_by_client(records)
+    for client_id in sorted(records_by_client):
+        client_records = records_by_client[client_id]
+        client_scores = torch.tensor(
+            [max(0.0, float(record.get(score_key, 0.0))) for record in client_records],
+            dtype=torch.float64,
+        )
+        total_score = float(client_scores.sum().item())
+        if total_score <= eps:
+            client_probabilities = torch.full_like(
+                client_scores,
+                1.0 / max(len(client_records), 1),
+            )
+        else:
+            client_probabilities = client_scores / total_score
+
+        for record, probability in zip(
+            client_records,
+            client_probabilities.tolist(),
+            strict=True,
+        ):
+            annotated_record = dict(record)
+            raw_score = float(record.get(score_key, 0.0))
+            # Paper branch should operate on tau directly, not a global min-max rescaling.
+            annotated_record["leverage_score"] = raw_score
+            annotated_record["client_sampling_probability"] = float(probability)
+            annotated.append(annotated_record)
+
+    return annotated
+
+
 def compute_client_local_leverage_scores(
     payloads: list[ClientFeaturePayload],
     rank: int = 8,
@@ -229,29 +236,22 @@ def compute_client_local_leverage_scores(
     observed_ranks: list[int] = []
 
     for payload in valid_payloads:
-        normalized, _, singular_values, actual_rank = _compute_group_scores(
+        _, raw_scores, singular_values, actual_rank, _ = _compute_group_scores(
             payload.features,
             rank=rank,
             eps=eps,
         )
         observed_ranks.append(actual_rank)
         client_singular_values[payload.client_id] = singular_values
-
-        # Align row scores back to original sample order when a left transform exists.
-        if actual_rank > 0 and payload.left_transform is not None:
-            u, _, _ = torch.linalg.svd(payload.features.float(), full_matrices=False)
-            decoded_u = payload.left_transform.transpose(0, 1) @ u[:, :actual_rank]
-            raw_scores = (decoded_u**2).sum(dim=1)
-            total_score = float(raw_scores.sum().item())
-            if total_score <= eps:
-                normalized = torch.full_like(raw_scores, 1.0 / max(len(raw_scores), 1))
-            else:
-                normalized = raw_scores / total_score
+        total_score = float(raw_scores.sum().item())
+        if total_score <= eps:
+            normalized = torch.full_like(raw_scores, 1.0 / max(len(raw_scores), 1))
         else:
-            raw_scores = normalized.clone()
+            normalized = raw_scores / total_score
 
         for local_pos, label in enumerate(payload.labels):
             local_probability = float(normalized[local_pos].item()) if len(normalized) else 0.0
+            raw_score = float(raw_scores[local_pos].item()) if len(raw_scores) else 0.0
             records.append(
                 {
                     "client_id": payload.client_id,
@@ -261,8 +261,8 @@ def compute_client_local_leverage_scores(
                     "dataset_index": payload.dataset_indices[local_pos],
                     "sample_id": payload.sample_ids[local_pos],
                     "label": int(label),
-                    "leverage_score": local_probability,
-                    "raw_leverage_score": float(raw_scores[local_pos].item()) if len(raw_scores) else 0.0,
+                    "leverage_score": raw_score,
+                    "raw_leverage_score": raw_score,
                     "client_sampling_probability": local_probability,
                 }
             )
@@ -430,16 +430,21 @@ def sample_records_official_style(
         return []
 
     records_by_client = group_records_by_client(records)
-    min_samples_per_client = total_budget // num_clients
+    active_client_ids = sorted(
+        client_id for client_id, client_records in records_by_client.items() if client_records
+    )
+    effective_num_clients = len(active_client_ids)
+    if effective_num_clients <= 0:
+        return []
+
+    min_samples_per_client = total_budget // effective_num_clients
     selected: list[dict[str, Any]] = []
 
     global_records: list[dict[str, Any]] = []
     global_probabilities: list[float] = []
 
-    for client_offset in range(num_clients):
-        client_records = records_by_client.get(client_offset, [])
-        if not client_records:
-            continue
+    for client_id in active_client_ids:
+        client_records = records_by_client[client_id]
 
         client_probs = torch.tensor(
             [
@@ -454,10 +459,13 @@ def sample_records_official_style(
         else:
             client_probs = client_probs / prob_sum
 
+        client_weight = 1.0 / effective_num_clients
+        client_global_probabilities = client_probs * client_weight
+
         sample_size = min_samples_per_client
         if sample_size > 0:
             generator = torch.Generator()
-            generator.manual_seed(seed + client_offset)
+            generator.manual_seed(seed + client_id)
             sampled_indices = torch.multinomial(
                 client_probs,
                 sample_size,
@@ -466,13 +474,21 @@ def sample_records_official_style(
             )
             for sampled_index in sampled_indices.tolist():
                 record = dict(client_records[sampled_index])
-                record["sampling_probability"] = float(client_probs[sampled_index].item())
+                global_probability = float(client_global_probabilities[sampled_index].item())
+                record["stage_sampling_probability"] = float(client_probs[sampled_index].item())
+                record["global_sampling_probability"] = global_probability
+                record["sampling_probability"] = global_probability
                 selected.append(record)
 
-        client_weight = 1.0 / num_clients
-        for record, probability in zip(client_records, client_probs.tolist(), strict=True):
-            global_records.append(record)
-            global_probabilities.append(float(probability) * client_weight)
+        for record, probability in zip(
+            client_records,
+            client_global_probabilities.tolist(),
+            strict=True,
+        ):
+            annotated_record = dict(record)
+            annotated_record["global_sampling_probability"] = float(probability)
+            global_records.append(annotated_record)
+            global_probabilities.append(float(probability))
 
     remaining_budget = total_budget - len(selected)
     if remaining_budget > 0 and global_records:
@@ -493,7 +509,27 @@ def sample_records_official_style(
         )
         for sampled_index in sampled_indices.tolist():
             record = dict(global_records[sampled_index])
-            record["sampling_probability"] = float(probabilities[sampled_index].item())
+            record["stage_sampling_probability"] = float(probabilities[sampled_index].item())
+            record["sampling_probability"] = float(
+                record.get("global_sampling_probability", probabilities[sampled_index].item())
+            )
             selected.append(record)
+
+    sample_size = len(selected)
+    if sample_size <= 0:
+        return selected
+
+    for record in selected:
+        probability = max(
+            float(
+                record.get(
+                    "global_sampling_probability",
+                    record.get("sampling_probability", 0.0),
+                )
+            ),
+            eps,
+        )
+        record["sampling_probability"] = probability
+        record["sampling_weight"] = math.sqrt(1.0 / (sample_size * probability))
 
     return selected

@@ -4,12 +4,20 @@ import inspect
 
 import torch
 from torch import nn
+from torch.nn.modules.batchnorm import _BatchNorm
 from torch.utils.data import DataLoader
 
 
 class Client:
     def __init__(self, device: torch.device):
         self.device = device
+
+    @staticmethod
+    def _requires_strict_batchnorm_handling(model: nn.Module) -> bool:
+        return any(
+            isinstance(module, _BatchNorm) and module.track_running_stats
+            for module in model.modules()
+        )
 
     def train(
         self,
@@ -20,7 +28,9 @@ class Client:
         lr: float,
         loss_fn=None,
     ):
-        if len(dataset) < 2:
+        requires_batchnorm = self._requires_strict_batchnorm_handling(model)
+
+        if requires_batchnorm and len(dataset) < 2:
             raise ValueError("BatchNorm training requires at least 2 samples.")
 
         model = model.to(self.device)
@@ -31,7 +41,7 @@ class Client:
             dataset,
             batch_size=effective_batch_size,
             shuffle=True,
-            drop_last=True,
+            drop_last=requires_batchnorm,
         )
 
         optimizer = torch.optim.SGD(

@@ -18,7 +18,6 @@ class ClientFeaturePayload:
     labels: list[int]
     dataset_indices: list[int]
     sample_ids: list[int]
-    left_transform: torch.Tensor | None = None
 
 
 def sample_orthogonal_matrix(
@@ -67,7 +66,6 @@ def build_client_feature_payload(
             labels=labels,
             dataset_indices=indices,
             sample_ids=sample_ids,
-            left_transform=None,
         )
 
     loader = DataLoader(
@@ -98,7 +96,6 @@ def build_client_feature_payload(
     if right_transform is not None:
         feature_matrix = feature_matrix @ right_transform.to(dtype=feature_matrix.dtype)
 
-    left_transform = None
     if left_transform_seed is not None:
         left_transform = sample_orthogonal_matrix(
             feature_matrix.size(0),
@@ -114,5 +111,4 @@ def build_client_feature_payload(
         labels=labels,
         dataset_indices=indices,
         sample_ids=sample_ids,
-        left_transform=left_transform,
     )

@@ -4,17 +4,17 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-SEEDS=(2 3)
+SEEDS=(1 2 3)
 NUM_CLIENTS=5
 
-ROUNDS=5
-LOCAL_EPOCHS=1
+ROUNDS=100
+LOCAL_EPOCHS=2
 BATCH_SIZE=128
-BUFFER_SIZE=100
-SAMPLES_PER_TASK=20
-GDR_RANK=8
+BUFFER_SIZE=500
+SAMPLES_PER_TASK=50
+GDR_RANK=32
 
-mkdir -p outputs/logs outputs/results outputs/analysis/smoke
+mkdir -p outputs/logs outputs/results outputs/analysis/paper
 
 METHODS=(
   finetune
@@ -62,13 +62,13 @@ run_one() {
 
   local TASK_SPLIT="data/processed/task_splits/${DATASET}_${TASKS}task_seed${SEED}.json"
   local PARTITION="data/processed/federated_partitions/${DATASET}_${TASKS}task_${NUM_CLIENTS}clients_${BETA_TAG}_seed${SEED}.json"
-  local RUN_NAME="smoke_${DATASET}_${TASKS}task_${BETA_TAG}_${METHOD}_seed${SEED}"
+  local RUN_NAME="paper_${DATASET}_${TASKS}task_${BETA_TAG}_${METHOD}_seed${SEED}"
   local RESULT_PATH="outputs/results/${RUN_NAME}.json"
 
-  if [[ -f "$RESULT_PATH" ]]; then
-    echo "[SKIP] already exists: $RESULT_PATH"
-    return
-  fi
+#  if [[ -f "$RESULT_PATH" ]]; then
+#    echo "[SKIP] already exists: $RESULT_PATH"
+#    return
+#  fi
 
   echo "=================================================="
   echo "Running $RUN_NAME"
@@ -134,7 +134,7 @@ done
 
 #python scripts/analysis/make_cbd_reproduction_outputs.py \
 #  --results_dir outputs/results \
-#  --prefix "smoke_" \
-#  --output_dir outputs/analysis/smoke
+#  --prefix "paper_" \
+#  --output_dir outputs/analysis/paper
 
 echo "Done."

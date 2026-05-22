@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=smoke_all_settings
+#SBATCH --job-name=paper_all_settings
 #SBATCH --output=outputs/logs/%x_%j.out
 #SBATCH --error=outputs/logs/%x_%j.err
 
@@ -22,6 +22,6 @@ echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
 echo "Start time: $(date)"
 
-bash jobs/local/run_smoke_all_settings.sh
+bash jobs/local/run_paper_all_settings.sh
 
 echo "Finished time: $(date)"

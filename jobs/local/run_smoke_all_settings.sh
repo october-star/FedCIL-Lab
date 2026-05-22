@@ -24,6 +24,38 @@ METHODS=(
 #  local_replay_gdr_tts_paper
 )
 
+prepare_setting() {
+  local DATASET="$1"
+  local TASKS="$2"
+  local BETA="$3"
+  local BETA_TAG="$4"
+
+  local TASK_SPLIT="data/processed/task_splits/${DATASET}_${TASKS}task_seed${SEED}.json"
+  local PARTITION="data/processed/federated_partitions/${DATASET}_${TASKS}task_${NUM_CLIENTS}clients_${BETA_TAG}_seed${SEED}.json"
+
+  # build task split if missing
+  if [[ ! -f "$TASK_SPLIT" ]]; then
+    echo "==> Building split: ${DATASET} ${TASKS}task seed=${SEED}"
+
+    python scripts/build_splits.py \
+      --dataset "$DATASET" \
+      --num_tasks "$TASKS" \
+      --seed "$SEED"
+  fi
+
+  # build partition if missing
+  if [[ ! -f "$PARTITION" ]]; then
+    echo "==> Building partition: ${DATASET} ${TASKS}task beta=${BETA} seed=${SEED}"
+
+    python scripts/build_federated_partitions.py \
+      --dataset "$DATASET" \
+      --num_tasks "$TASKS" \
+      --num_clients "$NUM_CLIENTS" \
+      --beta "$BETA" \
+      --seed "$SEED"
+  fi
+}
+
 run_one() {
   local DATASET="$1"
   local TASKS="$2"
@@ -32,27 +64,16 @@ run_one() {
 
   local TASK_SPLIT="data/processed/task_splits/${DATASET}_${TASKS}task_seed${SEED}.json"
   local PARTITION="data/processed/federated_partitions/${DATASET}_${TASKS}task_${NUM_CLIENTS}clients_${BETA_TAG}_seed${SEED}.json"
+
   local RUN_NAME="smoke_${DATASET}_${TASKS}task_${BETA_TAG}_${METHOD}_seed${SEED}"
 
-  if [[ ! -f "$TASK_SPLIT" ]]; then
-    echo "[SKIP] missing task split: $TASK_SPLIT"
-    return
-  fi
-
-  if [[ ! -f "$PARTITION" ]]; then
-    echo "[SKIP] missing partition: $PARTITION"
-    return
-  fi
-
   if [[ -f "outputs/results/${RUN_NAME}.json" ]]; then
-    echo "[SKIP] result exists: outputs/results/${RUN_NAME}.json"
+    echo "[SKIP] already exists: ${RUN_NAME}"
     return
   fi
 
   echo "=================================================="
   echo "Running $RUN_NAME"
-  echo "Task split: $TASK_SPLIT"
-  echo "Partition : $PARTITION"
   echo "=================================================="
 
   python scripts/train.py \
@@ -79,35 +100,37 @@ run_one() {
 run_setting() {
   local DATASET="$1"
   local TASKS="$2"
-  local BETA_TAG="$3"
+  local BETA="$3"
+  local BETA_TAG="$4"
 
   echo ""
   echo "##################################################"
-  echo "Setting: dataset=${DATASET}, tasks=${TASKS}, beta=${BETA_TAG}"
+  echo "Setting: dataset=${DATASET}, tasks=${TASKS}, beta=${BETA}"
   echo "##################################################"
+
+  prepare_setting "$DATASET" "$TASKS" "$BETA" "$BETA_TAG"
 
   for METHOD in "${METHODS[@]}"; do
     run_one "$DATASET" "$TASKS" "$BETA_TAG" "$METHOD"
   done
 }
 
-# CIFAR10: 3 tasks / 5 tasks, beta=0.5 / 1.0
+# ---------------- CIFAR10 ----------------
 for TASKS in 3 5; do
-  for BETA_TAG in beta05 beta10; do
-    run_setting cifar10 "$TASKS" "$BETA_TAG"
-  done
+  run_setting cifar10 "$TASKS" 0.5 beta05
+  run_setting cifar10 "$TASKS" 1.0 beta10
 done
 
-# CIFAR100: 5 tasks / 10 tasks, beta=0.1 / 0.5 / 1.0
-for TASKS in 5 10; do
-  for BETA_TAG in beta01 beta05 beta10; do
-    run_setting cifar100 "$TASKS" "$BETA_TAG"
-  done
-done
+# ---------------- CIFAR100 ----------------
+#for TASKS in 5 10; do
+#  run_setting cifar100 "$TASKS" 0.1 beta01
+#  run_setting cifar100 "$TASKS" 0.5 beta05
+#  run_setting cifar100 "$TASKS" 1.0 beta10
+#done
 
-#python scripts/analysis/make_cbd_reproduction_outputs.py \
-#  --results_dir outputs/results \
-#  --prefix "smoke_" \
-#  --output_dir outputs/analysis/smoke
+python scripts/analysis/make_cbd_reproduction_outputs.py \
+  --results_dir outputs/results \
+  --prefix "smoke_" \
+  --output_dir outputs/analysis/smoke
 
 echo "Done."

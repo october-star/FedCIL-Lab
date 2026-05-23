@@ -55,8 +55,8 @@ for SEED in 1 2 3 ; do
   #   --run_name "reproduce_core_cifar10_5task_beta05_replay_tts_buf300_seed${SEED}" \
   #   --no_download
 
-  # python scripts/train.py \
-  #   --method local_replay_gdr \
+  # python scripts/train.py \     
+  #   --method  "local_replay_gdr_paper"\
   #   --dataset cifar10 \
   #   --task_split_path "$TASK_SPLIT" \
   #   --partition_path "$PARTITION" \
@@ -68,7 +68,7 @@ for SEED in 1 2 3 ; do
   #   --samples_per_task 60 \
   #   --gdr_rank 8 \
   #   --seed "$SEED" \
-  #   --run_name "reproduce_core_cifar10_5task_beta05_replay_gdr_backbonegdr_buf300_seed${SEED}" \
+  #   --run_name "0522-1-reproduce_core_cifar10_5task_beta05_replay_gdr_paper_buf300_seed${SEED}" \
   #   --no_download
 
   python scripts/train.py \
@@ -88,6 +88,6 @@ for SEED in 1 2 3 ; do
     --tts_new_temp 1.1 \
     --tts_old_weight 1.1 \
     --tts_new_weight 0.9 \
-    --run_name "reproduce_core_cifar10_5task_beta05_replay_gdr_tts_paper_buf450_seed${SEED}" \
+    --run_name "0522-2—reproduce_core_cifar10_5task_beta05_replay_gdr_paper_buf300_seed${SEED}" \
     --no_download
 done

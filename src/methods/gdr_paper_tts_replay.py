@@ -119,7 +119,7 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             }
 
             loss_fn = None
-            if task_id > 0:
+            if task_id > 0 and False:
                 loss_fn = partial(
                     tts_cross_entropy,
                     old_classes=old_classes,

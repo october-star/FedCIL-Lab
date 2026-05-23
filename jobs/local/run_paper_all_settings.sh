@@ -12,7 +12,7 @@ LOCAL_EPOCHS=2
 BATCH_SIZE=128
 BUFFER_SIZE=500
 SAMPLES_PER_TASK=50
-GDR_RANK=32
+GDR_RANK=8
 
 mkdir -p outputs/logs outputs/results outputs/analysis/paper
 

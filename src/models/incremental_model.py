@@ -12,6 +12,12 @@ class IncrementalNet(nn.Module):
         if backbone_name == "resnet18":
             backbone = models.resnet18(pretrained=pretrained)
             self.feature_dim = backbone.fc.in_features
+            #backbone.fc = nn.Identity()
+            backbone.conv1 = nn.Conv2d(
+                3, 64, kernel_size=3, stride=1, padding=1, bias=False
+            )
+            backbone.maxpool = nn.Identity()
+            # ============================================
             backbone.fc = nn.Identity()
         else:
             raise ValueError(f"Unsupported backbone: {backbone_name}")

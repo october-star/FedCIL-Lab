@@ -10,6 +10,8 @@ __all__ = [
     "Finetune",
     "LocalReplay",
     "LocalReplayGDR",
+    "LocalReplayGDRPaper",
     "LocalReplayTTS",
     "LocalReplayGDRTTS",
+    "LocalReplayGDRTTSPaper",
 ]

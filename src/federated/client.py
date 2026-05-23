@@ -19,6 +19,7 @@ class Client:
         epochs: int,
         lr: float,
         loss_fn=None,
+        sampler=None,     
     ):
         if len(dataset) < 2:
             raise ValueError("BatchNorm training requires at least 2 samples.")
@@ -30,7 +31,8 @@ class Client:
         loader = DataLoader(
             dataset,
             batch_size=effective_batch_size,
-            shuffle=True,
+            shuffle=(sampler is None),
+            sampler=sampler,  
             drop_last=True,
         )
 

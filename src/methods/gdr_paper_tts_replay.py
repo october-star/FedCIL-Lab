@@ -6,7 +6,7 @@ from collections import Counter
 from functools import partial
 from pathlib import Path
 
-from torch.utils.data import ConcatDataset, Dataset
+from torch.utils.data import ConcatDataset, Dataset, WeightedRandomSampler
 
 from src.federated.aggregator import fedavg
 from src.federated.client import Client
@@ -18,6 +18,8 @@ from src.gdr.server import (
 )
 from src.methods.base_method import BaseMethod
 from src.tts.loss import tts_cross_entropy
+
+
 
 
 class IndexedSelectionDataset(Dataset):
@@ -139,9 +141,17 @@ class LocalReplayGDRTTSPaper(BaseMethod):
                     current_subset = self.dataset_manager.get_train_subset(
                         task_id, client_id
                     )
-                    train_dataset = self._compose_train_dataset(current_subset, client_id)
+                    train_dataset, sample_weights = self._compose_train_dataset(current_subset, client_id)
                     if len(train_dataset) < 2:
                         continue
+
+                    sampler = None
+                    if sample_weights is not None:
+                        sampler = WeightedRandomSampler(
+                            weights=sample_weights,
+                            num_samples=len(train_dataset),
+                            replacement=True,
+                        )    
 
                     local_model = copy.deepcopy(self.model)
                     state, loss = self.clients[client_id].train(
@@ -151,6 +161,7 @@ class LocalReplayGDRTTSPaper(BaseMethod):
                         epochs=self.local_epochs,
                         lr=round_lr,
                         loss_fn=loss_fn,
+                        sampler=sampler,  
                     )
 
                     local_states.append(state)
@@ -199,8 +210,20 @@ class LocalReplayGDRTTSPaper(BaseMethod):
     def _compose_train_dataset(self, current_subset: Dataset, client_id: int) -> Dataset:
         retained = self.retained_datasets[client_id]
         if not retained:
-            return current_subset
-        return ConcatDataset([current_subset, *retained])
+            return current_subset, None
+        full = ConcatDataset([current_subset, *retained])
+        return full, None
+        # retained = self.retained_datasets[client_id]
+        # if not retained:
+        #     return current_subset, None
+        # full = ConcatDataset([current_subset, *retained])
+        # n_cur = len(current_subset)
+        # n_rep = len(full) - n_cur
+        # if n_rep == 0:
+        #     return full, None
+        # replay_ratio = 0.5    
+        # w = [1.0/n_cur]*n_cur + [replay_ratio/n_rep]*n_rep
+        # return full, w
 
     def _global_sampling_budget(self, new_classes: int) -> int:
         if self.samples_per_task is not None:

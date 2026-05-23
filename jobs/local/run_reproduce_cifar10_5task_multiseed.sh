@@ -88,6 +88,6 @@ for SEED in 1 2 3 ; do
     --tts_new_temp 1.1 \
     --tts_old_weight 1.1 \
     --tts_new_weight 0.9 \
-    --run_name "0522-2—reproduce_core_cifar10_5task_beta05_replay_gdr_paper_buf300_seed${SEED}" \
+    --run_name "0522-reproduce_core_cifar10_5task_beta05_replay_gdr_paper_buf450_seed${SEED}" \
     --no_download
 done

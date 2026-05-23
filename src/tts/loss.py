@@ -82,3 +82,16 @@ def tts_cross_entropy(
             new_sample_weights,
         )
     return total_loss
+
+    # per_sample_w = torch.where(
+    #     is_old_sample,
+    #     losses.new_tensor(old_weight),
+    #     losses.new_tensor(new_weight),
+    # )
+
+    
+    # if sample_weights is not None:
+    #     per_sample_w = per_sample_w * sample_weights.to(losses.dtype)
+
+    
+    # return (losses * per_sample_w).sum() / per_sample_w.sum().clamp_min(1e-12)

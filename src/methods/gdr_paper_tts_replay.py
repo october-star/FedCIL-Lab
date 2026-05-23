@@ -121,6 +121,7 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             }
 
             loss_fn = None
+            
             if task_id > 0:
                 loss_fn = partial(
                     tts_cross_entropy,
@@ -135,7 +136,8 @@ class LocalReplayGDRTTSPaper(BaseMethod):
                 local_states = []
                 sample_counts = []
                 losses = []
-                round_lr = self._round_lr(round_id)
+                #round_lr = self._round_lr(round_id)
+                round_lr = self.lr
 
                 for client_id in range(self.num_clients):
                     current_subset = self.dataset_manager.get_train_subset(

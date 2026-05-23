@@ -10,16 +10,16 @@ NUM_CLIENTS=5
 ROUNDS=100
 LOCAL_EPOCHS=2
 BATCH_SIZE=128
-BUFFER_SIZE=500
-SAMPLES_PER_TASK=50
+BUFFER_SIZE=450
+SAMPLES_PER_TASK=90
 GDR_RANK=8
 
 mkdir -p outputs/logs outputs/results outputs/analysis/paper
 
 METHODS=(
-  finetune
-  local_replay
-#  local_replay_gdr_paper
+#  finetune
+#  local_replay
+  local_replay_gdr_paper
 #  local_replay_tts
 #  local_replay_gdr_tts_paper
 )
@@ -86,10 +86,10 @@ run_one() {
     --buffer_size "$BUFFER_SIZE" \
     --samples_per_task "$SAMPLES_PER_TASK" \
     --gdr_rank "$GDR_RANK" \
-    --tts_old_temp 2.0 \
-    --tts_new_temp 1.0 \
-    --tts_old_weight 1.5 \
-    --tts_new_weight 1.0 \
+    --tts_old_temp 0.9 \
+    --tts_new_temp 1.1 \
+    --tts_old_weight 1.1 \
+    --tts_new_weight 0.9 \
     --seed "$SEED" \
     --run_name "$RUN_NAME" \
     --no_download
@@ -132,9 +132,9 @@ for SEED in "${SEEDS[@]}"; do
   done
 done
 
-#python scripts/analysis/make_cbd_reproduction_outputs.py \
-#  --results_dir outputs/results \
-#  --prefix "paper_" \
-#  --output_dir outputs/analysis/paper
+python scripts/analysis/make_cbd_reproduction_outputs.py \
+  --results_dir outputs/results \
+  --prefix "paper_" \
+  --output_dir outputs/analysis/paper
 
 echo "Done."

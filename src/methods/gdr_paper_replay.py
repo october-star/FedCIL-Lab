@@ -7,6 +7,7 @@ from pathlib import Path
 
 from torch.utils.data import ConcatDataset, Dataset, WeightedRandomSampler
 
+from src.data.weighted_dataset import SampleWeightDataset
 from src.federated.aggregator import fedavg
 from src.federated.client import Client
 from src.gdr.features import build_client_feature_payload, sample_orthogonal_matrix
@@ -27,15 +28,40 @@ class IndexedSelectionDataset(Dataset):
     replacement.
     """
 
-    def __init__(self, dataset: Dataset, indices: list[int]) -> None:
+    def __init__(
+        self,
+        dataset: Dataset,
+        indices: list[int],
+        sampling_weights: list[float] | None = None,
+    ) -> None:
         self.dataset = dataset
         self.indices = [int(index) for index in indices]
+
+        self.sampling_weights = (
+            [float(weight) for weight in sampling_weights]
+            if sampling_weights is not None
+            else None
+        )
+        if self.sampling_weights is not None and len(self.sampling_weights) != len(
+            self.indices
+        ):
+            raise ValueError("sampling_weights must match indices length")
 
     def __len__(self) -> int:
         return len(self.indices)
 
     def __getitem__(self, index: int):
         return self.dataset[self.indices[index]]
+    
+    def get_sampling_weight(self, index: int) -> float:
+        if self.sampling_weights is not None:
+            return float(self.sampling_weights[index])
+
+        getter = getattr(self.dataset, "get_sampling_weight", None)
+        if callable(getter):
+            return float(getter(self.indices[index]))
+        return 1.0
+
 
 
 class LocalReplayGDRPaper(BaseMethod):
@@ -82,7 +108,7 @@ class LocalReplayGDRPaper(BaseMethod):
             "gdr_candidate_pool": "current_task_only",
             "gdr_selection_mode": "per_client_class_balanced_sampling",
             "gdr_encryption": "P_k_X_Q",
-            "replay_weighting": "uniform",
+            "replay_weighting": "sampling_weighted_ce",
             "tasks": [],
         }
 
@@ -107,6 +133,7 @@ class LocalReplayGDRPaper(BaseMethod):
                 sample_counts = []
                 losses = []
                 round_lr = self._round_lr(round_id)
+                #round_lr = self.lr
 
                 for client_id in range(self.num_clients):
                     current_subset = self.dataset_manager.get_train_subset(
@@ -187,9 +214,39 @@ class LocalReplayGDRPaper(BaseMethod):
     ) -> tuple[Dataset, list[float] | None]:
         retained = self.retained_datasets[client_id]
         if not retained:
-            return current_subset, None
-        full = ConcatDataset([current_subset, *retained])
+            return (
+                SampleWeightDataset(
+                    current_subset,
+                    default_weight=1.0,
+                ),
+                None,
+            )
+        full = ConcatDataset(
+            [
+                SampleWeightDataset(
+                    current_subset,
+                    default_weight=1.0,
+                ),
+                *[
+                    SampleWeightDataset(
+                        retained_dataset,
+                    )
+                    for retained_dataset in retained
+                ],
+            ]
+        )
         return full, None
+        # retained = self.retained_datasets[client_id]
+        # if not retained:
+        #     return current_subset, None
+        # full = ConcatDataset([current_subset, *retained])
+        # n_cur = len(current_subset)
+        # n_rep = len(full) - n_cur
+        # if n_rep == 0:
+        #     return full, None
+        # replay_ratio = 1.0    
+        # w = [1.0/n_cur]*n_cur + [replay_ratio/n_rep]*n_rep
+        #return full, w
 
     def _global_sampling_budget(self, new_classes: int) -> int:
         if self.samples_per_task is not None:
@@ -278,10 +335,14 @@ class LocalReplayGDRPaper(BaseMethod):
             selected_indices = [
                 int(record["dataset_index"]) for record in client_records
             ]
+            selected_weights = [
+                float(record.get("sampling_weight", 1.0)) for record in client_records
+            ]
             self.retained_datasets[client_id].append(
                 IndexedSelectionDataset(
                     current_datasets[client_id],
                     selected_indices,
+                    sampling_weights=selected_weights,
                 )
             )
 

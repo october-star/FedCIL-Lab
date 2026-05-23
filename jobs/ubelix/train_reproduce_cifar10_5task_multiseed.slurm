@@ -29,9 +29,9 @@ mkdir -p data/processed
 echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
 echo "Start time: $(date)"
-echo "问题解决实验:GDR Paper Only —— 3 seed 版本"
+echo "问题解决实验:GDR + TTS Paper  —— TTS: 分别归一化再相加"
 
-for SEED in 1 2 3 ; do
+for SEED in 1  ; do
   python scripts/build_splits.py \
     --dataset cifar10 \
     --num_tasks 5 \

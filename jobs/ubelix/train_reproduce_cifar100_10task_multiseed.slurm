@@ -29,10 +29,10 @@ mkdir -p data/processed
 echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
 echo "Start time: $(date)"
-echo "问题解决实验:GDR Paper Only —— buffer共500"
+echo "问题解决实验:GDR Paper + tts —— 学习率为0.01 + samples 200 "
 
 
-for SEED in 1 2 3; do
+for SEED in 1 ; do
   python scripts/build_splits.py \
     --dataset cifar100 \
     --num_tasks 10 \

@@ -7,7 +7,7 @@ cd "$ROOT_DIR"
 SEEDS=(1)
 NUM_CLIENTS=5
 
-ROUNDS=20
+ROUNDS=100
 LOCAL_EPOCHS=2
 BATCH_SIZE=128
 BUFFER_SIZE=450
@@ -24,7 +24,7 @@ mkdir -p outputs/logs outputs/results outputs/analysis/paper
 
 METHODS=(
 #  finetune
-  local_replay
+#  local_replay
   local_replay_gdr_paper
 #  local_replay_tts
 #  local_replay_gdr_tts_paper

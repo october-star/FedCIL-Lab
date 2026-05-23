@@ -19,6 +19,9 @@ from src.methods.gdr_tts_replay import LocalReplayGDRTTS
 from src.methods.replay import LocalReplay
 from src.methods.tts_replay import LocalReplayTTS
 from src.models.incremental_model import IncrementalNet
+from src.methods.cbdr_adaptive_replay import (
+    CBDRAdaptiveReply
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,6 +37,7 @@ def parse_args() -> argparse.Namespace:
             "local_replay_tts",
             "local_replay_gdr_tts",
             "local_replay_gdr_tts_paper",
+            "cbdr_adaptive_reply"
         ],
     )
     parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100"])
@@ -75,6 +79,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tts_new_temp", type=float, default=1.1)
     parser.add_argument("--tts_old_weight", type=float, default=1.1)
     parser.add_argument("--tts_new_weight", type=float, default=0.9)
+
+    parser.add_argument("--adaptive_replay", action="store_true")
+    parser.add_argument("--adaptive_replay_gamma", type=float, default=1.0)
+    parser.add_argument("--adaptive_replay_min_weight", type=float, default=0.5)
+    parser.add_argument("--adaptive_replay_max_weight", type=float, default=2.0)
+    parser.add_argument("--replay_sampling_mass", type=float, default=0.5)
+    parser.add_argument("--kl_temperature", type=float, default=2.0)
+    parser.add_argument("--kl_max_samples_per_class", type=int, default=100)
+
     return parser.parse_args()
 
 
@@ -215,6 +228,35 @@ def main() -> None:
             new_temp=args.tts_new_temp,
             old_weight=args.tts_old_weight,
             new_weight=args.tts_new_weight,
+        )
+    elif args.method == "cbdr_adaptive_reply":
+        method = CBDRAdaptiveReply(
+            **method_kwargs,
+            buffer_size=args.buffer_size,
+            samples_per_task=args.samples_per_task,
+            seed=args.seed,
+            gdr_rank=args.gdr_rank,
+            gdr_feature_samples=args.gdr_feature_samples,
+            gdr_class_wise=(
+                args.gdr_class_wise
+                if args.gdr_class_wise is not None
+                else False
+            ),
+            figure_dir=args.figure_dir,
+            run_name=run_name,
+
+            old_temp=args.tts_old_temp,
+            new_temp=args.tts_new_temp,
+            old_weight=args.tts_old_weight,
+            new_weight=args.tts_new_weight,
+
+            adaptive_replay=args.adaptive_replay,
+            adaptive_replay_gamma=args.adaptive_replay_gamma,
+            adaptive_replay_min_weight=args.adaptive_replay_min_weight,
+            adaptive_replay_max_weight=args.adaptive_replay_max_weight,
+            replay_sampling_mass=args.replay_sampling_mass,
+            kl_temperature=args.kl_temperature,
+            kl_max_samples_per_class=args.kl_max_samples_per_class,
         )
     else:
         raise ValueError(f"Unsupported method: {args.method}")

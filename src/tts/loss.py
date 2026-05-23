@@ -56,25 +56,29 @@ def tts_cross_entropy(
         new_temp=new_temp,
     )
 
-    # Match the original B.py implementation: after scaling the old/new logits
-    # columns, apply a second sample-wise temperature to the full row.
-    if 0 < old_classes < logits.size(1):
-        is_old_sample = targets < old_classes
-        sample_temps = torch.where(
-            is_old_sample,
-            torch.full_like(targets, old_temp, dtype=scaled_logits.dtype),
-            torch.full_like(targets, new_temp, dtype=scaled_logits.dtype),
-        ).unsqueeze(1)
-        scaled_logits = scaled_logits / sample_temps
-        task_weights = torch.where(
-            is_old_sample,
-            torch.full_like(targets, old_weight, dtype=scaled_logits.dtype),
-            torch.full_like(targets, new_weight, dtype=scaled_logits.dtype),
-        )
-    else:
-        task_weights = torch.ones_like(targets, dtype=scaled_logits.dtype)
-
     losses = F.cross_entropy(scaled_logits, targets, reduction="none")
-    if sample_weights is not None:
-        task_weights = task_weights * sample_weights.to(task_weights.dtype)
-    return (losses * task_weights).mean()
+    if not (0 < old_classes < logits.size(1)):
+        return _weighted_group_mean(losses, sample_weights)
+
+    is_old_sample = targets < old_classes
+    total_loss = losses.new_tensor(0.0)
+
+    if is_old_sample.any():
+        old_sample_weights = None
+        if sample_weights is not None:
+            old_sample_weights = sample_weights[is_old_sample]
+        total_loss = total_loss + old_weight * _weighted_group_mean(
+            losses[is_old_sample],
+            old_sample_weights,
+        )
+
+    is_new_sample = ~is_old_sample
+    if is_new_sample.any():
+        new_sample_weights = None
+        if sample_weights is not None:
+            new_sample_weights = sample_weights[is_new_sample]
+        total_loss = total_loss + new_weight * _weighted_group_mean(
+            losses[is_new_sample],
+            new_sample_weights,
+        )
+    return total_loss

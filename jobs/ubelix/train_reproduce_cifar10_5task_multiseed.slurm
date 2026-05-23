@@ -29,8 +29,9 @@ mkdir -p data/processed
 echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
 echo "Start time: $(date)"
+echo "问题解决实验:问题一：Buffer 类别严重不均衡（client_2 class5 只有 1 个样本）"
 
-for SEED in 1 2 3; do
+for SEED in 1 ; do
   python scripts/build_splits.py \
     --dataset cifar10 \
     --num_tasks 5 \

@@ -14,7 +14,7 @@ from src.gdr.features import build_client_feature_payload, sample_orthogonal_mat
 from src.gdr.server import (
     compute_client_local_leverage_scores,
     group_records_by_client,
-    sample_records_official_style,
+    sample_records_by_class_probability,
 )
 from src.methods.base_method import BaseMethod
 from src.tts.loss import tts_cross_entropy
@@ -90,7 +90,7 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             "gdr_feature_samples": self.gdr_feature_samples,
             "gdr_class_wise": self.gdr_class_wise,
             "gdr_candidate_pool": "current_task_only",
-            "gdr_selection_mode": "official_client_balanced_sampling",
+            "gdr_selection_mode": "per_client_class_balanced_sampling",
             "gdr_encryption": "P_k_X_Q",
             "replay_weighting": "uniform",
             "tts": {
@@ -207,6 +207,18 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             return self.samples_per_task * self.num_clients
         return new_classes * self.buffer_size
 
+    def _per_client_sampling_budgets(self, total_budget: int) -> dict[int, int]:
+        total_budget = max(int(total_budget), 0)
+        if self.num_clients <= 0:
+            return {}
+
+        base_quota = total_budget // self.num_clients
+        remainder = total_budget % self.num_clients
+        return {
+            client_id: base_quota + (1 if client_id < remainder else 0)
+            for client_id in range(self.num_clients)
+        }
+
     def _round_lr(self, round_id: int, eta_min: float = 1e-3) -> float:
         if self.rounds <= 1:
             return self.lr
@@ -218,8 +230,8 @@ class LocalReplayGDRTTSPaper(BaseMethod):
 
         if self.gdr_class_wise:
             raise ValueError(
-                "Paper GDR with P_k / Q encryption currently supports only global "
-                "sampling. Use --no-gdr_class_wise."
+                "Paper GDR with P_k / Q encryption currently does not support "
+                "class-wise leverage computation. Use --no-gdr_class_wise."
             )
 
         payloads = []
@@ -251,16 +263,22 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             rank=self.gdr_rank,
         )
         total_budget = self._global_sampling_budget(new_classes)
-        selected_records = sample_records_official_style(
-            result.records,
-            total_budget=total_budget,
-            num_clients=self.num_clients,
-            seed=self.seed + task_id,
-        )
-        records_by_client = group_records_by_client(selected_records)
+        per_client_budgets = self._per_client_sampling_budgets(total_budget)
+        records_by_client = group_records_by_client(result.records)
+        selected_records: list[dict] = []
+        selected_records_by_client: dict[int, list[dict]] = {}
 
         for client_id in range(self.num_clients):
-            client_records = records_by_client.get(client_id, [])
+            selected_client_records = sample_records_by_class_probability(
+                records_by_client.get(client_id, []),
+                total_budget=per_client_budgets.get(client_id, 0),
+                seed=self.seed + task_id * 1000 + client_id,
+            )
+            selected_records_by_client[client_id] = selected_client_records
+            selected_records.extend(selected_client_records)
+
+        for client_id in range(self.num_clients):
+            client_records = selected_records_by_client.get(client_id, [])
             if not client_records:
                 continue
 
@@ -278,11 +296,24 @@ class LocalReplayGDRTTSPaper(BaseMethod):
         buffer_plot = (
             self.figure_dir / f"{self.run_name}_task{task_id}_buffer_distribution.png"
         )
-        plot_leverage_scores(
-            result.records,
-            leverage_plot,
-            title=f"{self.run_name} task {task_id} leverage scores",
-        )
+        leverage_title = f"{self.run_name} task {task_id} leverage scores"
+        try:
+            plot_leverage_scores(
+                result.records,
+                leverage_plot,
+                title=leverage_title,
+                selected_records=selected_records,
+                use_raw_score=True,
+                log_scale=False,
+            )
+        except TypeError as exc:
+            if "unexpected keyword argument" not in str(exc):
+                raise
+            plot_leverage_scores(
+                result.records,
+                leverage_plot,
+                title=leverage_title,
+            )
         plot_buffer_class_distribution(
             self._retained_summaries(),
             buffer_plot,
@@ -298,10 +329,14 @@ class LocalReplayGDRTTSPaper(BaseMethod):
             "num_scored_samples": len(result.records),
             "num_selected_samples": len(selected_records),
             "global_sampling_budget": total_budget,
-            "selection_mode": "official_client_balanced_sampling",
+            "per_client_sampling_budgets": {
+                f"client_{client_id}": budget
+                for client_id, budget in per_client_budgets.items()
+            },
+            "selection_mode": "per_client_class_balanced_sampling",
             "candidate_pool": "current_task_only",
             "encryption": "P_k_X_Q",
-            "sampling_weight_formula": "uniform",
+            "sampling_weight_formula": "per_client_class_leverage_probability",
             "leverage_plot": str(leverage_plot),
             "buffer_distribution_plot": str(buffer_plot),
         }

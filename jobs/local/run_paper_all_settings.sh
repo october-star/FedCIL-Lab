@@ -4,24 +4,31 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-SEEDS=(1 2 3)
+SEEDS=(1)
 NUM_CLIENTS=5
 
-ROUNDS=100
+ROUNDS=20
 LOCAL_EPOCHS=2
 BATCH_SIZE=128
 BUFFER_SIZE=450
-SAMPLES_PER_TASK=90
 GDR_RANK=8
+
+declare -A SAMPLES_PER_TASK_MAP=(
+  ["cifar10_3"]=90
+  ["cifar10_5"]=60
+  ["cifar100_5"]=200
+  ["cifar100_10"]=100
+)
 
 mkdir -p outputs/logs outputs/results outputs/analysis/paper
 
 METHODS=(
 #  finetune
-#  local_replay
+  local_replay
   local_replay_gdr_paper
 #  local_replay_tts
 #  local_replay_gdr_tts_paper
+  cbdr_adaptive_reply
 )
 
 prepare_setting() {
@@ -70,8 +77,17 @@ run_one() {
 #    return
 #  fi
 
+  local KEY="${DATASET}_${TASKS}"
+  local SAMPLES_PER_TASK="${SAMPLES_PER_TASK_MAP[$KEY]:-}"
+
+  if [[ -z "$SAMPLES_PER_TASK" ]]; then
+    echo "[ERROR] Missing samples_per_task for ${KEY}"
+    exit 1
+  fi
+
   echo "=================================================="
   echo "Running $RUN_NAME"
+  echo "samples_per_task=${SAMPLES_PER_TASK}"
   echo "=================================================="
 
   python scripts/train.py \
@@ -132,9 +148,9 @@ for SEED in "${SEEDS[@]}"; do
   done
 done
 
-python scripts/analysis/make_cbd_reproduction_outputs.py \
-  --results_dir outputs/results \
-  --prefix "paper_" \
-  --output_dir outputs/analysis/paper
+#python scripts/analysis/make_cbd_reproduction_outputs.py \
+#  --results_dir outputs/results \
+#  --prefix "local_optim_" \
+#  --output_dir outputs/analysis/local/optim
 
 echo "Done."

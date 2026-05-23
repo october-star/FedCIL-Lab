@@ -14,8 +14,9 @@ BETA_TAG=beta05
 ROUNDS=20
 LOCAL_EPOCHS=2
 BATCH_SIZE=128
-BUFFER_SIZE=500
+BUFFER_SIZE=450
 GDR_RANK=8
+SAMPLES_PER_TASK=90
 
 TASK_SPLIT="data/processed/task_splits/${DATASET}_${TASKS}task_seed${SEED}.json"
 PARTITION="data/processed/federated_partitions/${DATASET}_${TASKS}task_${NUM_CLIENTS}clients_${BETA_TAG}_seed${SEED}.json"
@@ -59,11 +60,12 @@ run_one() {
     --local_epochs "$LOCAL_EPOCHS" \
     --batch_size "$BATCH_SIZE" \
     --buffer_size "$BUFFER_SIZE" \
+    --samples_per_task "$SAMPLES_PER_TASK" \
     --gdr_rank "$GDR_RANK" \
-    --tts_old_temp 2.0 \
-    --tts_new_temp 1.0 \
-    --tts_old_weight 1.5 \
-    --tts_new_weight 1.0 \
+    --tts_old_temp 0.9 \
+    --tts_new_temp 1.1 \
+    --tts_old_weight 1.1 \
+    --tts_new_weight 0.9 \
     --seed "$SEED" \
     --run_name "$RUN_NAME" \
     --no_download \

@@ -244,7 +244,6 @@ class CBDRAdaptiveReply(BaseMethod):
                 "min_weight": self.adaptive_replay_min_weight,
                 "max_weight": self.adaptive_replay_max_weight,
                 "replay_sampling_mass": self.replay_sampling_mass,
-                "class_kl_scores_before_training": dict(self.class_kl_scores),
                 **kl_result,
             }
             gdr_result = self._update_retained_datasets_with_gdr(

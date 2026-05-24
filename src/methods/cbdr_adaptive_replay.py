@@ -153,8 +153,7 @@ class CBDRAdaptiveReply(BaseMethod):
                     old_weight=self.old_weight,
                     new_weight=self.new_weight,
                     old_class_ids=old_class_ids,
-                    new_class_ids=task_classes,
-                    debug_tts=False,
+                    new_class_ids=task_classes
                 )
 
             for round_id in range(self.rounds):

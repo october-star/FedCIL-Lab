@@ -136,7 +136,6 @@ class LocalReplayGDRTTSPaper(BaseMethod):
                     new_weight=self.new_weight,
                     old_class_ids=old_class_ids,
                     new_class_ids=task_classes,
-                    debug_tts=False,
                 )
 
             for round_id in range(self.rounds):

@@ -19,13 +19,17 @@ class Client:
         epochs: int,
         lr: float,
         loss_fn=None,
-        sampler=None,     
+        sampler=None,
+        teacher_model=None, kd_lambda=0.0, kd_temperature=2.0, old_classes=0,      
     ):
         if len(dataset) < 2:
             raise ValueError("BatchNorm training requires at least 2 samples.")
 
         model = model.to(self.device)
         model.train()
+        if teacher_model is not None:
+            teacher_model = teacher_model.to(self.device)
+            teacher_model.eval()
 
         effective_batch_size = min(max(batch_size, 2), len(dataset))
         loader = DataLoader(
@@ -59,6 +63,7 @@ class Client:
 
                 optimizer.zero_grad()
                 logits = model(x)
+                # === CE Loss ===
                 if loss_fn is None:
                     per_sample = nn.functional.cross_entropy(logits, y, reduction="none")
                     if sample_weights is None:
@@ -70,6 +75,17 @@ class Client:
                         loss = loss_fn(logits, y, sample_weights=sample_weights)
                     else:
                         loss = loss_fn(logits, y)
+
+                # === add:KD Loss ===
+                if teacher_model is not None and kd_lambda > 0.0 and old_classes > 0:
+                    from src.kd.loss import kd_loss
+                    with torch.no_grad():
+                        teacher_logits = teacher_model(x)
+                    # only use old_classes
+                    loss = loss + kd_lambda * kd_loss(
+                        logits, teacher_logits, old_classes, kd_temperature
+                    )
+        
 
                 loss.backward()
                 optimizer.step()

@@ -79,7 +79,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tts_new_temp", type=float, default=1.1)
     parser.add_argument("--tts_old_weight", type=float, default=1.1)
     parser.add_argument("--tts_new_weight", type=float, default=0.9)
-
     parser.add_argument("--adaptive_replay", action="store_true")
     parser.add_argument("--adaptive_replay_gamma", type=float, default=1.0)
     parser.add_argument("--adaptive_replay_min_weight", type=float, default=0.5)
@@ -88,7 +87,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--kl_temperature", type=float, default=2.0)
     parser.add_argument("--kl_max_samples_per_class", type=int, default=100)
     parser.add_argument("--candidate_pool_multiplier", type=float, default=2.0)
-
+    parser.add_argument("--kd_lambda", type=float, default=0.0)
+    parser.add_argument("--kd_temperature", type=float, default=2.0)
     return parser.parse_args()
 
 
@@ -182,6 +182,8 @@ def main() -> None:
             ),
             figure_dir=args.figure_dir,
             run_name=run_name,
+            kd_lambda = kd_lambda,
+            kd_temperature = kd_temperature,
         )
     elif args.method == "local_replay_tts":
         method = LocalReplayTTS(

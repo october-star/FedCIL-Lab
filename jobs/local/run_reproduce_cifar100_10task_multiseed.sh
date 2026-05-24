@@ -68,7 +68,9 @@ for SEED in 1 ; do
     --samples_per_task 100 \
     --gdr_rank 8 \
     --seed "$SEED" \
-    --run_name "0524-2-reproduce_core_cifar100_10task_beta05_replay_gdr_paper_buf500_seed${SEED}" \
+    --run_name "0524-3-reproduce_core_cifar100_10task_beta05_replay_gd_kd_paper_buf500_seed${SEED}" \
+    --kd_lambda: 1.0 \
+    --kd_temperature: 2.0 \
     --no_download
 
 

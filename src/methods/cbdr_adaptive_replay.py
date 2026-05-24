@@ -113,8 +113,6 @@ class CBDRAdaptiveReply(BaseMethod):
         for task_id in range(self.dataset_manager.num_tasks):
             print(f"\n=== Task {task_id} ===")
 
-            old_classes = self.model.num_classes
-
             # store old model
             teacher_model = None
             if task_id > 0:
@@ -123,13 +121,19 @@ class CBDRAdaptiveReply(BaseMethod):
                 teacher_model.eval()
 
             task_classes = self.dataset_manager.get_task_classes(task_id)
+            old_class_ids = (
+                self.dataset_manager.get_seen_classes(task_id - 1)
+                if task_id > 0
+                else []
+            )
             # 扩充模型大小学新的
             self.model.expand_head(len(task_classes))
             self.model.to(self.device)
             task_history = {
                 "task_id": task_id,
                 "task_classes": task_classes,
-                "old_classes": old_classes,
+                "old_class_ids": old_class_ids,
+                "new_class_ids": task_classes,
                 "new_classes": len(task_classes),
                 "rounds": [],
                 "buffer_before": self._retained_summaries(),
@@ -141,14 +145,16 @@ class CBDRAdaptiveReply(BaseMethod):
             }
 
             loss_fn = None
-            if task_id > 0 and False:
+            if task_id > 0:
                 loss_fn = partial(
                     tts_cross_entropy,
-                    old_classes=old_classes,
                     old_temp=self.old_temp,
                     new_temp=self.new_temp,
                     old_weight=self.old_weight,
                     new_weight=self.new_weight,
+                    old_class_ids=old_class_ids,
+                    new_class_ids=task_classes,
+                    debug_tts=False,
                 )
 
             for round_id in range(self.rounds):
@@ -227,7 +233,7 @@ class CBDRAdaptiveReply(BaseMethod):
                     teacher_model=teacher_model,
                     student_model=self.model,
                     retained_datasets=self.retained_datasets,
-                    old_classes=old_classes,
+                    old_class_ids=old_class_ids,
                     device=self.device,
                     temperature=self.kl_temperature,
                     max_samples_per_class=self.kl_max_samples_per_class,

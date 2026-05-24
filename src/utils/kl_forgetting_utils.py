@@ -27,32 +27,35 @@ def compute_class_kl_forgetting(
     teacher_model,
     student_model,
     retained_datasets: list[list[Dataset]],
-    old_classes: int,
+    old_class_ids: list[int],
     device,
     temperature: float = 2.0,
     max_samples_per_class: int = 100,
 ) -> dict[int, float]:
-    # 关掉 dropout / BN 更新 只测试，不训练
     teacher_model.eval()
     student_model.eval()
 
-    # 按 class 收集 replay 样本。
+    old_class_ids = [int(c) for c in old_class_ids]
+    old_class_set = set(old_class_ids)
+
+    if not old_class_ids:
+        return {}
+
+    old_idx = torch.tensor(
+        old_class_ids,
+        device=device,
+        dtype=torch.long,
+    )
+
     samples_by_class: dict[int, list[torch.Tensor]] = defaultdict(list)
 
-    # 按类划分数据
-    # samples_by_class =
-    # {
-    #     dog: [x1, x2],
-    #     cat: [x3],
-    #     truck: [x4, x5],
-    # }
     for client_datasets in retained_datasets:
         for dataset in client_datasets:
             for i in range(len(dataset)):
                 x, y = _unpack_item(dataset[i])
                 y = int(y)
 
-                if y >= old_classes:
+                if y not in old_class_set:
                     continue
 
                 if len(samples_by_class[y]) >= max_samples_per_class:
@@ -62,18 +65,20 @@ def compute_class_kl_forgetting(
 
     scores: dict[int, float] = {}
 
-    # 计算 temperature是为了变平滑
     for class_id, xs in samples_by_class.items():
         if not xs:
             continue
 
         batch = torch.stack(xs).to(device)
 
-        teacher_logits = _get_logits(teacher_model(batch))[:, :old_classes]
-        student_logits = _get_logits(student_model(batch))[:, :old_classes]
+        teacher_logits_all = _get_logits(teacher_model(batch))
+        student_logits_all = _get_logits(student_model(batch))
 
-        teacher_probs = F.softmax(teacher_logits / temperature, dim=1)
-        student_log_probs = F.log_softmax(student_logits / temperature, dim=1)
+        teacher_logits = teacher_logits_all.index_select(1, old_idx)
+        student_logits = student_logits_all.index_select(1, old_idx)
+
+        teacher_probs = F.softmax(teacher_logits / temperature,dim=1)
+        student_log_probs = F.log_softmax(student_logits / temperature,dim=1)
 
         kl = F.kl_div(
             student_log_probs,

@@ -7,27 +7,35 @@ cd "$ROOT_DIR"
 SEEDS=(1)
 NUM_CLIENTS=5
 
-ROUNDS=20
+ROUNDS=10
 LOCAL_EPOCHS=2
 BATCH_SIZE=128
 BUFFER_SIZE=450
 GDR_RANK=8
 
-declare -A SAMPLES_PER_TASK_MAP=(
-  ["cifar10_3"]=90
-  ["cifar10_5"]=60
-  ["cifar100_5"]=200
-  ["cifar100_10"]=100
-)
+get_samples_per_task() {
+  local DATASET="$1"
+  local TASKS="$2"
 
-mkdir -p outputs/logs outputs/results outputs/analysis/paper
+  case "${DATASET}_${TASKS}" in
+    cifar10_3) echo 90 ;;
+    cifar10_5) echo 60 ;;
+    cifar100_5) echo 200 ;;
+    cifar100_10) echo 100 ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+mkdir -p outputs/logs outputs/results/smoke outputs/analysis/smoke
 
 METHODS=(
 #  finetune
-#  local_replay
-  local_replay_gdr_paper
-#  local_replay_tts
-#  local_replay_gdr_tts_paper
+  local_replay
+#  local_replay_gdr_paper
+  local_replay_tts
+  local_replay_gdr_tts_paper
   cbdr_adaptive_reply
 )
 
@@ -69,16 +77,16 @@ run_one() {
 
   local TASK_SPLIT="data/processed/task_splits/${DATASET}_${TASKS}task_seed${SEED}.json"
   local PARTITION="data/processed/federated_partitions/${DATASET}_${TASKS}task_${NUM_CLIENTS}clients_${BETA_TAG}_seed${SEED}.json"
-  local RUN_NAME="paper_${DATASET}_${TASKS}task_${BETA_TAG}_${METHOD}_seed${SEED}"
-  local RESULT_PATH="outputs/results/${RUN_NAME}.json"
+  local RUN_NAME="smoke_${DATASET}_${TASKS}task_${BETA_TAG}_${METHOD}_seed${SEED}"
+  local RESULT_PATH="outputs/results/smoke/${RUN_NAME}.json"
 
 #  if [[ -f "$RESULT_PATH" ]]; then
 #    echo "[SKIP] already exists: $RESULT_PATH"
 #    return
 #  fi
 
-  local KEY="${DATASET}_${TASKS}"
-  local SAMPLES_PER_TASK="${SAMPLES_PER_TASK_MAP[$KEY]:-}"
+  local SAMPLES_PER_TASK
+  SAMPLES_PER_TASK="$(get_samples_per_task "$DATASET" "$TASKS")"
 
   if [[ -z "$SAMPLES_PER_TASK" ]]; then
     echo "[ERROR] Missing samples_per_task for ${KEY}"
@@ -136,21 +144,21 @@ for SEED in "${SEEDS[@]}"; do
   echo "Running seed=${SEED}"
   echo "=================================================="
 
-  for TASKS in 3 5; do
+  for TASKS in 5; do
     run_setting cifar10 "$TASKS" 0.5 beta05 "$SEED"
-    run_setting cifar10 "$TASKS" 1.0 beta10 "$SEED"
+#    run_setting cifar10 "$TASKS" 1.0 beta10 "$SEED"
   done
 
-  for TASKS in 5 10; do
-    run_setting cifar100 "$TASKS" 0.1 beta01 "$SEED"
+  for TASKS in 5; do
+#    run_setting cifar100 "$TASKS" 0.1 beta01 "$SEED"
     run_setting cifar100 "$TASKS" 0.5 beta05 "$SEED"
-    run_setting cifar100 "$TASKS" 1.0 beta10 "$SEED"
+#    run_setting cifar100 "$TASKS" 1.0 beta10 "$SEED"
   done
 done
 
 #python scripts/analysis/make_cbd_reproduction_outputs.py \
 #  --results_dir outputs/results \
-#  --prefix "local_optim_" \
+#  --prefix "smoke_" \
 #  --output_dir outputs/analysis/local/optim
 
 echo "Done."

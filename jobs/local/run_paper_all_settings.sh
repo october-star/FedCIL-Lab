@@ -13,12 +13,20 @@ BATCH_SIZE=128
 BUFFER_SIZE=450
 GDR_RANK=8
 
-declare -A SAMPLES_PER_TASK_MAP=(
-  ["cifar10_3"]=90
-  ["cifar10_5"]=60
-  ["cifar100_5"]=200
-  ["cifar100_10"]=100
-)
+get_samples_per_task() {
+  local DATASET="$1"
+  local TASKS="$2"
+
+  case "${DATASET}_${TASKS}" in
+    cifar10_3) echo 90 ;;
+    cifar10_5) echo 60 ;;
+    cifar100_5) echo 200 ;;
+    cifar100_10) echo 100 ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
 
 mkdir -p outputs/logs outputs/results outputs/analysis/paper
 
@@ -77,8 +85,8 @@ run_one() {
 #    return
 #  fi
 
-  local KEY="${DATASET}_${TASKS}"
-  local SAMPLES_PER_TASK="${SAMPLES_PER_TASK_MAP[$KEY]:-}"
+  local SAMPLES_PER_TASK
+  SAMPLES_PER_TASK="$(get_samples_per_task "$DATASET" "$TASKS")"
 
   if [[ -z "$SAMPLES_PER_TASK" ]]; then
     echo "[ERROR] Missing samples_per_task for ${KEY}"
@@ -130,27 +138,27 @@ run_setting() {
   done
 }
 
-for SEED in "${SEEDS[@]}"; do
-  echo ""
-  echo "=================================================="
-  echo "Running seed=${SEED}"
-  echo "=================================================="
+#for SEED in "${SEEDS[@]}"; do
+#  echo ""
+#  echo "=================================================="
+#  echo "Running seed=${SEED}"
+#  echo "=================================================="
+#
+#  for TASKS in 3 5; do
+#    run_setting cifar10 "$TASKS" 0.5 beta05 "$SEED"
+#    run_setting cifar10 "$TASKS" 1.0 beta10 "$SEED"
+#  done
+#
+#  for TASKS in 5 10; do
+#    run_setting cifar100 "$TASKS" 0.1 beta01 "$SEED"
+#    run_setting cifar100 "$TASKS" 0.5 beta05 "$SEED"
+#    run_setting cifar100 "$TASKS" 1.0 beta10 "$SEED"
+#  done
+#done
 
-  for TASKS in 3 5; do
-    run_setting cifar10 "$TASKS" 0.5 beta05 "$SEED"
-    run_setting cifar10 "$TASKS" 1.0 beta10 "$SEED"
-  done
-
-  for TASKS in 5 10; do
-    run_setting cifar100 "$TASKS" 0.1 beta01 "$SEED"
-    run_setting cifar100 "$TASKS" 0.5 beta05 "$SEED"
-    run_setting cifar100 "$TASKS" 1.0 beta10 "$SEED"
-  done
-done
-
-#python scripts/analysis/make_cbd_reproduction_outputs.py \
-#  --results_dir outputs/results \
-#  --prefix "local_optim_" \
-#  --output_dir outputs/analysis/local/optim
+python scripts/analysis/make_cbd_reproduction_outputs.py \
+  --results_dir outputs/results \
+  --prefix "paper_" \
+  --output_dir outputs/analysis/paper
 
 echo "Done."

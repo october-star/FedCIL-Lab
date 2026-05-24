@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="100baa83-fb96-4e55-b69e-df90e7378c5a" name="Changes" comment="fix: fix adaptive name and ouputs">
+      <change beforePath="$PROJECT_DIR$/jobs/local/run_paper_all_settings.sh" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/local/run_paper_all_settings.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jobs/local/smoke/run_smoke_beta05.sh" beforeDir="false" afterPath="$PROJECT_DIR$/jobs/local/run_smoke_beta05.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/methods/cbdr_adaptive_replay.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/methods/cbdr_adaptive_replay.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/methods/gdr_paper_tts_replay.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/methods/gdr_paper_tts_replay.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/methods/tts_replay.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/methods/tts_replay.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tts/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tts/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tts/loss.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tts/loss.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/kl_forgetting_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/kl_forgetting_utils.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="mmj" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;mmj12138&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/october-star/FedCIL-Lab.git&quot;,
+    &quot;accountId&quot;: &quot;fdc67445-2372-4976-af1c-cd2f64f8aa6d&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="3CvqLA4pbbBph0Irn12hH9b7guH" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.build_federated_partitions.executor": "Run",
+    "Python.build_splits.executor": "Run",
+    "Python.prepare_data.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
+    "WebServerToolWindowPanel.toolwindow.show.date": "false",
+    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
+    "WebServerToolWindowPanel.toolwindow.show.size": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/mmj/PycharmProjects/FedCIL-Lab/jobs/local/smoke",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.fileTypes",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/jobs/local/smoke" />
+      <recent name="$PROJECT_DIR$/src/methods" />
+      <recent name="$PROJECT_DIR$/jobs/ubelix" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/jobs/local" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.build_federated_partitions">
+    <configuration name="build_federated_partitions" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="FedCIL-Lab" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/build_federated_partitions.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="build_splits" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="FedCIL-Lab" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/build_splits.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="prepare_data" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="FedCIL-Lab" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/prepare_data.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.prepare_data" />
+        <item itemvalue="Python.build_splits" />
+        <item itemvalue="Python.build_federated_partitions" />
+        <item itemvalue="Python.prepare_data" />
+        <item itemvalue="Python.build_splits" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-76f8388c3a79-JavaScript-PY-243.24978.54" />
+        <option value="bundled-python-sdk-91e3b7efe1d4-466328ff949b-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.24978.54" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="100baa83-fb96-4e55-b69e-df90e7378c5a" name="Changes" comment="" />
+      <created>1777276332472</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1777276332472</updated>
+      <workItem from="1777276333533" duration="11877000" />
+      <workItem from="1777313463230" duration="8507000" />
+      <workItem from="1777451227948" duration="1000" />
+      <workItem from="1777457980883" duration="1215000" />
+      <workItem from="1777462351539" duration="3000" />
+      <workItem from="1779196940819" duration="10375000" />
+      <workItem from="1779227022800" duration="5068000" />
+      <workItem from="1779262209209" duration="85925000" />
+    </task>
+    <task id="LOCAL-00001" summary="fix: update gdr choose">
+      <option name="closed" value="true" />
+      <created>1779226690063</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1779226690063</updated>
+    </task>
+    <task id="LOCAL-00002" summary="feat: add scripts">
+      <option name="closed" value="true" />
+      <created>1779259307148</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1779259307148</updated>
+    </task>
+    <task id="LOCAL-00003" summary="fix: fix buffer">
+      <option name="closed" value="true" />
+      <created>1779262700588</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1779262700588</updated>
+    </task>
+    <task id="LOCAL-00004" summary="feat: run scripts after change buffer">
+      <option name="closed" value="true" />
+      <created>1779284952754</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1779284952754</updated>
+    </task>
+    <task id="LOCAL-00005" summary="fix: fix scripts after change buffer">
+      <option name="closed" value="true" />
+      <created>1779285390811</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1779285390811</updated>
+    </task>
+    <task id="LOCAL-00006" summary="fix: add local script">
+      <option name="closed" value="true" />
+      <created>1779285669443</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1779285669443</updated>
+    </task>
+    <task id="LOCAL-00007" summary="fix: add smoke all scripts">
+      <option name="closed" value="true" />
+      <created>1779466988260</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1779466988260</updated>
+    </task>
+    <task id="LOCAL-00008" summary="fix: fix smoke all scripts">
+      <option name="closed" value="true" />
+      <created>1779467982793</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1779467982793</updated>
+    </task>
+    <task id="LOCAL-00009" summary="fix: fix smoke all scripts">
+      <option name="closed" value="true" />
+      <created>1779468024308</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1779468024308</updated>
+    </task>
+    <task id="LOCAL-00010" summary="fix: fix smoke all scripts">
+      <option name="closed" value="true" />
+      <created>1779472341832</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1779472341832</updated>
+    </task>
+    <task id="LOCAL-00011" summary="fix: paper all scripts">
+      <option name="closed" value="true" />
+      <created>1779480417154</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1779480417154</updated>
+    </task>
+    <task id="LOCAL-00012" summary="fix: fix gdr rank">
+      <option name="closed" value="true" />
+      <created>1779527579671</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1779527579671</updated>
+    </task>
+    <task id="LOCAL-00013" summary="feat: add kl adaptive optim">
+      <option name="closed" value="true" />
+      <created>1779546820544</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1779546820544</updated>
+    </task>
+    <task id="LOCAL-00014" summary="fix: update script parameter">
+      <option name="closed" value="true" />
+      <created>1779549924362</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1779549924362</updated>
+    </task>
+    <task id="LOCAL-00015" summary="fix: update samples_per_task and kl log">
+      <option name="closed" value="true" />
+      <created>1779556396350</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1779556396350</updated>
+    </task>
+    <task id="LOCAL-00016" summary="fix: update slurm">
+      <option name="closed" value="true" />
+      <created>1779556479810</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1779556479810</updated>
+    </task>
+    <task id="LOCAL-00017" summary="fix: fix adaptive name and ouputs">
+      <option name="closed" value="true" />
+      <created>1779612435498</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1779612435498</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="fix: update gdr choose" />
+    <MESSAGE value="feat: add scripts" />
+    <MESSAGE value="fix: fix buffer" />
+    <MESSAGE value="feat: run scripts after change buffer" />
+    <MESSAGE value="fix: fix scripts after change buffer" />
+    <MESSAGE value="fix: add local script" />
+    <MESSAGE value="fix: add smoke all scripts" />
+    <MESSAGE value="fix: fix smoke all scripts" />
+    <MESSAGE value="fix: paper all scripts" />
+    <MESSAGE value="fix: fix gdr rank" />
+    <MESSAGE value="feat: add kl adaptive optim" />
+    <MESSAGE value="fix: update script parameter" />
+    <MESSAGE value="fix: update samples_per_task and kl log" />
+    <MESSAGE value="fix: update slurm" />
+    <MESSAGE value="fix: fix adaptive name and ouputs" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: fix adaptive name and ouputs" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/FedCIL_Lab$build_splits.coverage" NAME="build_splits Coverage Results" MODIFIED="1779220544197" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />
+    <SUITE FILE_PATH="coverage/FedCIL_Lab$prepare_data.coverage" NAME="prepare_data Coverage Results" MODIFIED="1779220493599" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />
+    <SUITE FILE_PATH="coverage/FedCIL_Lab$build_federated_partitions.coverage" NAME="build_federated_partitions Coverage Results" MODIFIED="1779220570085" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />
+  </component>
+</project>

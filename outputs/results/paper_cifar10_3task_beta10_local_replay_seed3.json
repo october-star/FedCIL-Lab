@@ -1,0 +1,1006 @@
+{
+  "run_name": "paper_cifar10_3task_beta10_local_replay_seed3",
+  "config": {
+    "method": "local_replay",
+    "dataset": "cifar10",
+    "task_split_path": "data/processed/task_splits/cifar10_3task_seed3.json",
+    "partition_path": "data/processed/federated_partitions/cifar10_3task_5clients_beta10_seed3.json",
+    "num_clients": 5,
+    "rounds": 100,
+    "local_epochs": 2,
+    "batch_size": 128,
+    "lr": 0.01,
+    "backbone": "resnet18",
+    "pretrained": false,
+    "data_root": "data/raw",
+    "no_download": true,
+    "output_dir": "outputs/results",
+    "run_name": "paper_cifar10_3task_beta10_local_replay_seed3",
+    "save_checkpoint": false,
+    "buffer_size": 500,
+    "samples_per_task": 50,
+    "seed": 3,
+    "gdr_rank": 8,
+    "gdr_feature_samples": null,
+    "gdr_class_wise": null,
+    "figure_dir": "outputs/figures/gdr",
+    "tts_old_temp": 2.0,
+    "tts_new_temp": 1.0,
+    "tts_old_weight": 1.5,
+    "tts_new_weight": 1.0
+  },
+  "device": "cuda",
+  "results": {
+    "method": "local_replay",
+    "buffer_size": 500,
+    "samples_per_task": 50,
+    "tasks": [
+      {
+        "task_id": 0,
+        "task_classes": [
+          1,
+          5,
+          6,
+          0
+        ],
+        "rounds": [
+          {
+            "round_id": 0,
+            "loss": 1.7864555441898962,
+            "seen_acc": 0.5955,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 5,
+            "loss": 0.6980711896181129,
+            "seen_acc": 0.8865,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 10,
+            "loss": 0.5038296964798283,
+            "seen_acc": 0.913,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 15,
+            "loss": 0.379191328201972,
+            "seen_acc": 0.93825,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 20,
+            "loss": 0.3072173620391431,
+            "seen_acc": 0.9485,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 25,
+            "loss": 0.2847557511142375,
+            "seen_acc": 0.9545,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 30,
+            "loss": 0.24574023006339812,
+            "seen_acc": 0.954,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 35,
+            "loss": 0.234748737670055,
+            "seen_acc": 0.95725,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 40,
+            "loss": 0.2174744742507421,
+            "seen_acc": 0.95725,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 45,
+            "loss": 0.19062095124490824,
+            "seen_acc": 0.96025,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 50,
+            "loss": 0.18560009477338765,
+            "seen_acc": 0.96225,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 55,
+            "loss": 0.15367346001942117,
+            "seen_acc": 0.9565,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 60,
+            "loss": 0.15418348115904112,
+            "seen_acc": 0.963,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 65,
+            "loss": 0.13731747190831298,
+            "seen_acc": 0.96475,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 70,
+            "loss": 0.12539314575915322,
+            "seen_acc": 0.96475,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 75,
+            "loss": 0.1172719983782731,
+            "seen_acc": 0.96675,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 80,
+            "loss": 0.10737009590048893,
+            "seen_acc": 0.96375,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 85,
+            "loss": 0.11585033350761036,
+            "seen_acc": 0.96475,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 90,
+            "loss": 0.08262525589978517,
+            "seen_acc": 0.964,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 95,
+            "loss": 0.08649642186488551,
+            "seen_acc": 0.96675,
+            "num_clients": 5,
+            "num_samples": 20000
+          },
+          {
+            "round_id": 99,
+            "loss": 0.08937299934036669,
+            "seen_acc": 0.97025,
+            "num_clients": 5,
+            "num_samples": 20000
+          }
+        ],
+        "buffer_before": {
+          "client_0": {
+            "capacity": 500,
+            "num_samples": 0,
+            "class_counts": {},
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_1": {
+            "capacity": 500,
+            "num_samples": 0,
+            "class_counts": {},
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_2": {
+            "capacity": 500,
+            "num_samples": 0,
+            "class_counts": {},
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_3": {
+            "capacity": 500,
+            "num_samples": 0,
+            "class_counts": {},
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_4": {
+            "capacity": 500,
+            "num_samples": 0,
+            "class_counts": {},
+            "balance_classes": true,
+            "use_scores": false
+          }
+        },
+        "final_seen_acc": 0.97025,
+        "buffer_after": {
+          "client_0": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 4,
+              "1": 5,
+              "2": 20,
+              "3": 21
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_1": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 11,
+              "1": 2,
+              "2": 16,
+              "3": 21
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_2": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 21,
+              "1": 2,
+              "2": 2,
+              "3": 25
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_3": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 20,
+              "1": 19,
+              "2": 7,
+              "3": 4
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_4": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 6,
+              "1": 17,
+              "2": 10,
+              "3": 17
+            },
+            "balance_classes": true,
+            "use_scores": false
+          }
+        }
+      },
+      {
+        "task_id": 1,
+        "task_classes": [
+          9,
+          4,
+          7
+        ],
+        "rounds": [
+          {
+            "round_id": 0,
+            "loss": 2.744694833491496,
+            "seen_acc": 0.31385714285714283,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 5,
+            "loss": 0.6329452312002516,
+            "seen_acc": 0.3964285714285714,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 10,
+            "loss": 0.44628475352376606,
+            "seen_acc": 0.44257142857142856,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 15,
+            "loss": 0.3835010735567071,
+            "seen_acc": 0.4522857142857143,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 20,
+            "loss": 0.37574077040415677,
+            "seen_acc": 0.4471428571428571,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 25,
+            "loss": 0.33215102974783545,
+            "seen_acc": 0.47514285714285714,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 30,
+            "loss": 0.29108628013054066,
+            "seen_acc": 0.462,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 35,
+            "loss": 0.27548801144551505,
+            "seen_acc": 0.4674285714285714,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 40,
+            "loss": 0.22638116042954187,
+            "seen_acc": 0.46714285714285714,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 45,
+            "loss": 0.230540554361774,
+            "seen_acc": 0.46285714285714286,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 50,
+            "loss": 0.18274566936297834,
+            "seen_acc": 0.456,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 55,
+            "loss": 0.17390220528530795,
+            "seen_acc": 0.46085714285714285,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 60,
+            "loss": 0.16925834568675896,
+            "seen_acc": 0.4697142857142857,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 65,
+            "loss": 0.15726301070001553,
+            "seen_acc": 0.45785714285714285,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 70,
+            "loss": 0.1378032749774816,
+            "seen_acc": 0.4724285714285714,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 75,
+            "loss": 0.12727305687778895,
+            "seen_acc": 0.463,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 80,
+            "loss": 0.10830359503427814,
+            "seen_acc": 0.4714285714285714,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 85,
+            "loss": 0.11655464532916009,
+            "seen_acc": 0.45985714285714285,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 90,
+            "loss": 0.08854083483438766,
+            "seen_acc": 0.459,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 95,
+            "loss": 0.07550337266567016,
+            "seen_acc": 0.4675714285714286,
+            "num_clients": 5,
+            "num_samples": 15250
+          },
+          {
+            "round_id": 99,
+            "loss": 0.07211592412644621,
+            "seen_acc": 0.4695714285714286,
+            "num_clients": 5,
+            "num_samples": 15250
+          }
+        ],
+        "buffer_before": {
+          "client_0": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 4,
+              "1": 5,
+              "2": 20,
+              "3": 21
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_1": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 11,
+              "1": 2,
+              "2": 16,
+              "3": 21
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_2": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 21,
+              "1": 2,
+              "2": 2,
+              "3": 25
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_3": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 20,
+              "1": 19,
+              "2": 7,
+              "3": 4
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_4": {
+            "capacity": 500,
+            "num_samples": 50,
+            "class_counts": {
+              "0": 6,
+              "1": 17,
+              "2": 10,
+              "3": 17
+            },
+            "balance_classes": true,
+            "use_scores": false
+          }
+        },
+        "final_seen_acc": 0.4695714285714286,
+        "buffer_after": {
+          "client_0": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 4,
+              "1": 5,
+              "2": 20,
+              "3": 21,
+              "4": 17,
+              "5": 33
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_1": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 11,
+              "1": 2,
+              "2": 16,
+              "3": 21,
+              "4": 1,
+              "5": 41,
+              "6": 8
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_2": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 21,
+              "1": 2,
+              "2": 2,
+              "3": 25,
+              "4": 8,
+              "5": 9,
+              "6": 33
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_3": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 20,
+              "1": 19,
+              "2": 7,
+              "3": 4,
+              "4": 22,
+              "5": 7,
+              "6": 21
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_4": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 6,
+              "1": 17,
+              "2": 10,
+              "3": 17,
+              "4": 24,
+              "5": 11,
+              "6": 15
+            },
+            "balance_classes": true,
+            "use_scores": false
+          }
+        }
+      },
+      {
+        "task_id": 2,
+        "task_classes": [
+          2,
+          8,
+          3
+        ],
+        "rounds": [
+          {
+            "round_id": 0,
+            "loss": 3.562680772918847,
+            "seen_acc": 0.1822,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 5,
+            "loss": 0.8930452999826555,
+            "seen_acc": 0.2794,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 10,
+            "loss": 0.5149708108680431,
+            "seen_acc": 0.3349,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 15,
+            "loss": 0.3277427183607216,
+            "seen_acc": 0.4033,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 20,
+            "loss": 0.3324266474512784,
+            "seen_acc": 0.4101,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 25,
+            "loss": 0.2291925226410077,
+            "seen_acc": 0.401,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 30,
+            "loss": 0.25339500040180574,
+            "seen_acc": 0.4365,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 35,
+            "loss": 0.17027504604432023,
+            "seen_acc": 0.4211,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 40,
+            "loss": 0.1784850760416581,
+            "seen_acc": 0.4111,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 45,
+            "loss": 0.1268500476354933,
+            "seen_acc": 0.4161,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 50,
+            "loss": 0.11861027848133272,
+            "seen_acc": 0.4279,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 55,
+            "loss": 0.11496385985712898,
+            "seen_acc": 0.4164,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 60,
+            "loss": 0.09500393759806428,
+            "seen_acc": 0.4112,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 65,
+            "loss": 0.09478943085760907,
+            "seen_acc": 0.4362,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 70,
+            "loss": 0.07536857478022366,
+            "seen_acc": 0.4214,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 75,
+            "loss": 0.07462402055578778,
+            "seen_acc": 0.4362,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 80,
+            "loss": 0.05553945081306202,
+            "seen_acc": 0.4082,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 85,
+            "loss": 0.0509472999147436,
+            "seen_acc": 0.402,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 90,
+            "loss": 0.04819675054858312,
+            "seen_acc": 0.413,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 95,
+            "loss": 0.03237217860583516,
+            "seen_acc": 0.4041,
+            "num_clients": 5,
+            "num_samples": 15500
+          },
+          {
+            "round_id": 99,
+            "loss": 0.042471721969088425,
+            "seen_acc": 0.4092,
+            "num_clients": 5,
+            "num_samples": 15500
+          }
+        ],
+        "buffer_before": {
+          "client_0": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 4,
+              "1": 5,
+              "2": 20,
+              "3": 21,
+              "4": 17,
+              "5": 33
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_1": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 11,
+              "1": 2,
+              "2": 16,
+              "3": 21,
+              "4": 1,
+              "5": 41,
+              "6": 8
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_2": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 21,
+              "1": 2,
+              "2": 2,
+              "3": 25,
+              "4": 8,
+              "5": 9,
+              "6": 33
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_3": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 20,
+              "1": 19,
+              "2": 7,
+              "3": 4,
+              "4": 22,
+              "5": 7,
+              "6": 21
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_4": {
+            "capacity": 500,
+            "num_samples": 100,
+            "class_counts": {
+              "0": 6,
+              "1": 17,
+              "2": 10,
+              "3": 17,
+              "4": 24,
+              "5": 11,
+              "6": 15
+            },
+            "balance_classes": true,
+            "use_scores": false
+          }
+        },
+        "final_seen_acc": 0.4092,
+        "buffer_after": {
+          "client_0": {
+            "capacity": 500,
+            "num_samples": 150,
+            "class_counts": {
+              "0": 4,
+              "1": 5,
+              "2": 20,
+              "3": 21,
+              "4": 17,
+              "5": 33,
+              "7": 23,
+              "8": 14,
+              "9": 13
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_1": {
+            "capacity": 500,
+            "num_samples": 150,
+            "class_counts": {
+              "0": 11,
+              "1": 2,
+              "2": 16,
+              "3": 21,
+              "4": 1,
+              "5": 41,
+              "6": 8,
+              "7": 30,
+              "8": 19,
+              "9": 1
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_2": {
+            "capacity": 500,
+            "num_samples": 150,
+            "class_counts": {
+              "0": 21,
+              "1": 2,
+              "2": 2,
+              "3": 25,
+              "4": 8,
+              "5": 9,
+              "6": 33,
+              "8": 43,
+              "9": 7
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_3": {
+            "capacity": 500,
+            "num_samples": 150,
+            "class_counts": {
+              "0": 20,
+              "1": 19,
+              "2": 7,
+              "3": 4,
+              "4": 22,
+              "5": 7,
+              "6": 21,
+              "7": 15,
+              "8": 1,
+              "9": 34
+            },
+            "balance_classes": true,
+            "use_scores": false
+          },
+          "client_4": {
+            "capacity": 500,
+            "num_samples": 150,
+            "class_counts": {
+              "0": 6,
+              "1": 17,
+              "2": 10,
+              "3": 17,
+              "4": 24,
+              "5": 11,
+              "6": 15,
+              "7": 28,
+              "8": 22
+            },
+            "balance_classes": true,
+            "use_scores": false
+          }
+        }
+      }
+    ],
+    "buffer_stats": {
+      "client_0": {
+        "capacity": 500,
+        "num_samples": 150,
+        "class_counts": {
+          "0": 4,
+          "1": 5,
+          "2": 20,
+          "3": 21,
+          "4": 17,
+          "5": 33,
+          "7": 23,
+          "8": 14,
+          "9": 13
+        },
+        "balance_classes": true,
+        "use_scores": false
+      },
+      "client_1": {
+        "capacity": 500,
+        "num_samples": 150,
+        "class_counts": {
+          "0": 11,
+          "1": 2,
+          "2": 16,
+          "3": 21,
+          "4": 1,
+          "5": 41,
+          "6": 8,
+          "7": 30,
+          "8": 19,
+          "9": 1
+        },
+        "balance_classes": true,
+        "use_scores": false
+      },
+      "client_2": {
+        "capacity": 500,
+        "num_samples": 150,
+        "class_counts": {
+          "0": 21,
+          "1": 2,
+          "2": 2,
+          "3": 25,
+          "4": 8,
+          "5": 9,
+          "6": 33,
+          "8": 43,
+          "9": 7
+        },
+        "balance_classes": true,
+        "use_scores": false
+      },
+      "client_3": {
+        "capacity": 500,
+        "num_samples": 150,
+        "class_counts": {
+          "0": 20,
+          "1": 19,
+          "2": 7,
+          "3": 4,
+          "4": 22,
+          "5": 7,
+          "6": 21,
+          "7": 15,
+          "8": 1,
+          "9": 34
+        },
+        "balance_classes": true,
+        "use_scores": false
+      },
+      "client_4": {
+        "capacity": 500,
+        "num_samples": 150,
+        "class_counts": {
+          "0": 6,
+          "1": 17,
+          "2": 10,
+          "3": 17,
+          "4": 24,
+          "5": 11,
+          "6": 15,
+          "7": 28,
+          "8": 22
+        },
+        "balance_classes": true,
+        "use_scores": false
+      }
+    }
+  }
+}

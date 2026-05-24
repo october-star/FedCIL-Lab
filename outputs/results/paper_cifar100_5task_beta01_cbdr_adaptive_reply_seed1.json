@@ -38,7 +38,7 @@
   },
   "device": "cuda",
   "results": {
-    "method": "local_replay_gdr_tts_paper",
+    "method": "cbdr_adaptive_reply",
     "buffer_size": 450,
     "samples_per_task": 200,
     "gdr_rank": 8,

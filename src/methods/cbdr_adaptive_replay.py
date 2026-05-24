@@ -80,7 +80,7 @@ class CBDRAdaptiveReply(BaseMethod):
     def train(self) -> dict:
         print("Start Federated CBDR Adaptive Replay...")
         history = {
-            "method": "local_replay_gdr_tts_paper",
+            "method": "cbdr_adaptive_reply",
             "buffer_size": self.buffer_size,
             "samples_per_task": self.samples_per_task,
             "gdr_rank": self.gdr_rank,

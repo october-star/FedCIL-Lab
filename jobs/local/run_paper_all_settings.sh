@@ -1,10 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT_DIR="/storage/homefs/cl25n064/FedCIL-Lab"
 cd "$ROOT_DIR"
+source /storage/homefs/cl25n064/venvs/myddlenv/bin/activate
 
+<<<<<<< Updated upstream
 SEEDS=(1)
+=======
+SEEDS=(3)
+>>>>>>> Stashed changes
 NUM_CLIENTS=5
 
 ROUNDS=100

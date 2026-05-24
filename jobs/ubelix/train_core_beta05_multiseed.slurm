@@ -15,7 +15,7 @@
 #SBATCH --mem=64G
 
 module purge
-module load Python/3.10
+module load Python/3.11
 
 # 删除旧的虚拟环境
 # rm -rf ~/venvs/myddlenv

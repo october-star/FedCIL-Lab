@@ -25,7 +25,7 @@ mkdir -p outputs/logs outputs/results outputs/analysis/paper
 METHODS=(
 #  finetune
   local_replay
-  local_replay_gdr_paper
+#  local_replay_gdr_paper
   local_replay_tts
   local_replay_gdr_tts_paper
 #  cbdr_adaptive_reply

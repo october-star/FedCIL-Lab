@@ -12,7 +12,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=32G
+#SBATCH --mem=16G
 
 module purge
 module load Python/3.11.3-GCCcore-12.3.0

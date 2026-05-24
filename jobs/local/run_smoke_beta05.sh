@@ -28,12 +28,12 @@ get_samples_per_task() {
   esac
 }
 
-mkdir -p outputs/logs outputs/results outputs/analysis/paper
+mkdir -p outputs/logs outputs/results outputs/analysis/smoke
 
 METHODS=(
 #  finetune
 #  local_replay
-  local_replay_gdr_paper
+#  local_replay_gdr_paper
 #  local_replay_tts
 #  local_replay_gdr_tts_paper
 #  cbdr_adaptive_reply
@@ -78,7 +78,7 @@ run_one() {
 
   local TASK_SPLIT="data/processed/task_splits/${DATASET}_${TASKS}task_seed${SEED}.json"
   local PARTITION="data/processed/federated_partitions/${DATASET}_${TASKS}task_${NUM_CLIENTS}clients_${BETA_TAG}_seed${SEED}.json"
-  local RUN_NAME="paper_${DATASET}_${TASKS}task_${BETA_TAG}_${METHOD}_seed${SEED}"
+  local RUN_NAME="smoke_${DATASET}_${TASKS}task_${BETA_TAG}_${METHOD}_seed${SEED}"
   local RESULT_PATH="outputs/results/${RUN_NAME}.json"
 
 #  if [[ -f "$RESULT_PATH" ]]; then
@@ -167,7 +167,7 @@ done
 
 #python scripts/analysis/make_cbd_reproduction_outputs.py \
 #  --results_dir outputs/results \
-#  --prefix "local_optim_" \
+#  --prefix "smoke_" \
 #  --output_dir outputs/analysis/local/optim
 
 echo "Done."

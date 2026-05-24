@@ -261,7 +261,7 @@ def main() -> None:
             kl_temperature=args.kl_temperature,
             kl_max_samples_per_class=args.kl_max_samples_per_class,
         )
-    elif args.method == "cbdr_adaptive_reply":
+    elif args.method == "cbdr_kl_aware_adaptive":
         method = CBDRKlAwareAdaptiveReplay(
             **method_kwargs,
             buffer_size=args.buffer_size,

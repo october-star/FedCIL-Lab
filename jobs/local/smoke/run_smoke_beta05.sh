@@ -13,12 +13,20 @@ BATCH_SIZE=128
 BUFFER_SIZE=450
 GDR_RANK=8
 
-declare -A SAMPLES_PER_TASK_MAP=(
-  ["cifar10_3"]=90
-  ["cifar10_5"]=60
-  ["cifar100_5"]=200
-  ["cifar100_10"]=100
-)
+get_samples_per_task() {
+  local DATASET="$1"
+  local TASKS="$2"
+
+  case "${DATASET}_${TASKS}" in
+    cifar10_3) echo 90 ;;
+    cifar10_5) echo 60 ;;
+    cifar100_5) echo 200 ;;
+    cifar100_10) echo 100 ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
 
 mkdir -p outputs/logs outputs/results outputs/analysis/paper
 
@@ -28,7 +36,8 @@ METHODS=(
   local_replay_gdr_paper
 #  local_replay_tts
 #  local_replay_gdr_tts_paper
-  cbdr_adaptive_reply
+#  cbdr_adaptive_reply
+  cbdr_kl_aware_adaptive
 )
 
 prepare_setting() {
@@ -77,8 +86,10 @@ run_one() {
 #    return
 #  fi
 
-  local KEY="${DATASET}_${TASKS}"
-  local SAMPLES_PER_TASK="${SAMPLES_PER_TASK_MAP[$KEY]:-}"
+  local SAMPLES_PER_TASK
+  SAMPLES_PER_TASK="$(
+    get_samples_per_task "$DATASET" "$TASKS"
+  )"
 
   if [[ -z "$SAMPLES_PER_TASK" ]]; then
     echo "[ERROR] Missing samples_per_task for ${KEY}"
@@ -106,6 +117,12 @@ run_one() {
     --tts_new_temp 1.1 \
     --tts_old_weight 1.1 \
     --tts_new_weight 0.9 \
+    --candidate_pool_multiplier 2.0 \
+    --adaptive_replay_gamma 0.5 \
+    --adaptive_replay_min_weight 0.8 \
+    --adaptive_replay_max_weight 1.2 \
+    --kl_temperature 2.0 \
+    --kl_max_samples_per_class 100 \
     --seed "$SEED" \
     --run_name "$RUN_NAME" \
     --no_download

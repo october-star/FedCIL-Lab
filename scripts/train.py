@@ -22,6 +22,7 @@ from src.models.incremental_model import IncrementalNet
 from src.methods.cbdr_adaptive_replay import (
     CBDRAdaptiveReply
 )
+from src.methods.kl_aware_adaptive_replay import CBDRKlAwareAdaptiveReplay
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,7 +38,8 @@ def parse_args() -> argparse.Namespace:
             "local_replay_tts",
             "local_replay_gdr_tts",
             "local_replay_gdr_tts_paper",
-            "cbdr_adaptive_reply"
+            "cbdr_adaptive_reply",
+            "cbdr_kl_aware_adaptive"
         ],
     )
     parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100"])
@@ -87,6 +89,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--replay_sampling_mass", type=float, default=0.5)
     parser.add_argument("--kl_temperature", type=float, default=2.0)
     parser.add_argument("--kl_max_samples_per_class", type=int, default=100)
+    parser.add_argument("--candidate_pool_multiplier", type=float, default=2.0)
 
     return parser.parse_args()
 
@@ -257,6 +260,36 @@ def main() -> None:
             replay_sampling_mass=args.replay_sampling_mass,
             kl_temperature=args.kl_temperature,
             kl_max_samples_per_class=args.kl_max_samples_per_class,
+        )
+    elif args.method == "cbdr_adaptive_reply":
+        method = CBDRKlAwareAdaptiveReplay(
+            **method_kwargs,
+            buffer_size=args.buffer_size,
+            samples_per_task=args.samples_per_task,
+            seed=args.seed,
+            gdr_rank=args.gdr_rank,
+            gdr_feature_samples=args.gdr_feature_samples,
+            gdr_class_wise=(
+                args.gdr_class_wise
+                if args.gdr_class_wise is not None
+                else False
+            ),
+            figure_dir=args.figure_dir,
+            run_name=run_name,
+
+            old_temp=args.tts_old_temp,
+            new_temp=args.tts_new_temp,
+            old_weight=args.tts_old_weight,
+            new_weight=args.tts_new_weight,
+
+            adaptive_replay=args.adaptive_replay,
+            adaptive_replay_gamma=args.adaptive_replay_gamma,
+            adaptive_replay_min_weight=args.adaptive_replay_min_weight,
+            adaptive_replay_max_weight=args.adaptive_replay_max_weight,
+            replay_sampling_mass=args.replay_sampling_mass,
+            kl_temperature=args.kl_temperature,
+            kl_max_samples_per_class=args.kl_max_samples_per_class,
+            candidate_pool_multiplier=args.candidate_pool_multiplier,
         )
     else:
         raise ValueError(f"Unsupported method: {args.method}")

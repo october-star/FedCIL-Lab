@@ -106,6 +106,12 @@ run_one() {
     --tts_new_temp 1.1 \
     --tts_old_weight 1.1 \
     --tts_new_weight 0.9 \
+    --candidate_pool_multiplier 2.0 \
+    --adaptive_replay_gamma 0.5 \
+    --adaptive_replay_min_weight 0.8 \
+    --adaptive_replay_max_weight 1.2 \
+    --kl_temperature 2.0 \
+    --kl_max_samples_per_class 100 \
     --seed "$SEED" \
     --run_name "$RUN_NAME" \
     --no_download

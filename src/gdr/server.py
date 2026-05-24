@@ -83,12 +83,18 @@ def compute_leverage_scores(
     if not class_wise:
         feature_matrix = torch.cat(
             [payload.features for payload in valid_payloads], dim=0
-        )
-        normalized, _, singular_values, actual_rank = _compute_group_scores(
-            feature_matrix,
-            rank=rank,
-            eps=eps,
-        )
+        ).float()
+        num_samples, feature_dim = feature_matrix.shape
+        if num_samples == 0 or feature_dim == 0:
+            return GDRResult(
+                records=[],
+                singular_values=[],
+                rank=0,
+                class_wise=False,
+            )
+
+        centered = feature_matrix - feature_matrix.mean(dim=0, keepdim=True)
+        actual_rank = min(rank, min(centered.shape))
         if actual_rank <= 0:
             return GDRResult(
                 records=[],
@@ -97,16 +103,19 @@ def compute_leverage_scores(
                 class_wise=False,
             )
 
-        u, _, _ = torch.linalg.svd(feature_matrix.float(), full_matrices=False)
+        #u, _, _ = torch.linalg.svd(feature_matrix.float(), full_matrices=False)
+        u, singular_values, _ = torch.linalg.svd(centered, full_matrices=False)
+        u = u[:, :actual_rank]
         decoded_raw_scores = []
-        decoded_segments: list[torch.Tensor] = []
+        #decoded_segments: list[torch.Tensor] = []
         offset = 0
         for payload in valid_payloads:
             next_offset = offset + len(payload.labels)
-            local_u = u[offset:next_offset, :actual_rank]
+            #local_u = u[offset:next_offset, :actual_rank]
+            local_u = u[offset:next_offset]
             if payload.left_transform is not None:
                 local_u = payload.left_transform.transpose(0, 1) @ local_u
-            decoded_segments.append(local_u)
+            #decoded_segments.append(local_u)
             decoded_raw_scores.append((local_u**2).sum(dim=1))
             offset = next_offset
 
@@ -140,7 +149,8 @@ def compute_leverage_scores(
 
         return GDRResult(
             records=records,
-            singular_values=singular_values,
+            #singular_values=singular_values,
+            singular_values=[float(value.item()) for value in singular_values],
             rank=actual_rank,
             class_wise=False,
         )

@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 METHOD_LABELS = {
     "finetune": "Finetune",
-    "local_replay": "Re-Fed",
+    "local_replay": "Exemplar-based Replay",
     "local_replay_tts": "+TTS",
     "local_replay_gdr_paper": "+GDR",
     "local_replay_gdr_tts_paper": "+GDR+TTS",
@@ -318,8 +318,8 @@ def plot_figure5_variant(
 ) -> None:
     suffix = "with_adaptive" if include_adaptive else "no_adaptive"
 
-    required = {"Re-Fed", "+GDR+TTS"}
-    labels = ["Re-Fed", "+GDR+TTS"]
+    required = {"Exemplar-based Replay", "+GDR+TTS"}
+    labels = ["Exemplar-based Replay", "+GDR+TTS"]
 
     if include_adaptive:
         labels.append("CBDR+Adaptive")
@@ -420,7 +420,7 @@ def plot_figure5_variant(
 
 def make_figure5(rows, output_dir: Path):
     candidate_labels = {
-        "Re-Fed",
+        "Exemplar-based Replay",
         "+GDR+TTS",
         "CBDR+Adaptive",
     }

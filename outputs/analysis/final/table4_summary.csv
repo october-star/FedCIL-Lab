@@ -1,0 +1,52 @@
+dataset,num_tasks,beta,method,num_runs,seeds,mean,std,mean_std_percent,runs
+cifar10,3,0.5,+GDR,2,"1,2",0.6439,0.0492,64.39±4.92,paper_cifar10_3task_beta05_local_replay_gdr_paper_seed1;paper_cifar10_3task_beta05_local_replay_gdr_paper_seed2
+cifar10,3,0.5,+GDR+TTS,2,"1,2",0.4570,0.0778,45.70±7.78,paper_cifar10_3task_beta05_local_replay_gdr_tts_paper_seed1;paper_cifar10_3task_beta05_local_replay_gdr_tts_paper_seed2
+cifar10,3,0.5,+TTS,2,"1,2",0.3443,0.0403,34.43±4.03,paper_cifar10_3task_beta05_local_replay_tts_seed1;paper_cifar10_3task_beta05_local_replay_tts_seed2
+cifar10,3,0.5,CBDR+Adaptive,1,1,0.5875,0.0000,58.75±0.00,paper_cifar10_3task_beta05_cbdr_adaptive_reply_seed1
+cifar10,3,0.5,Exemplar-based Replay,3,"1,2,3",0.4533,0.0462,45.33±4.62,paper_cifar10_3task_beta05_local_replay_seed1;paper_cifar10_3task_beta05_local_replay_seed2;paper_cifar10_3task_beta05_local_replay_seed3
+cifar10,3,0.5,Finetune,3,"1,2,3",0.2798,0.0077,27.98±0.77,paper_cifar10_3task_beta05_finetune_seed1;paper_cifar10_3task_beta05_finetune_seed2;paper_cifar10_3task_beta05_finetune_seed3
+cifar10,3,1.0,+GDR,2,"1,2",0.6473,0.0583,64.73±5.83,paper_cifar10_3task_beta10_local_replay_gdr_paper_seed1;paper_cifar10_3task_beta10_local_replay_gdr_paper_seed2
+cifar10,3,1.0,+GDR+TTS,2,"1,2",0.4415,0.0805,44.15±8.05,paper_cifar10_3task_beta10_local_replay_gdr_tts_paper_seed1;paper_cifar10_3task_beta10_local_replay_gdr_tts_paper_seed2
+cifar10,3,1.0,+TTS,2,"1,2",0.3279,0.0600,32.79±6.00,paper_cifar10_3task_beta10_local_replay_tts_seed1;paper_cifar10_3task_beta10_local_replay_tts_seed2
+cifar10,3,1.0,CBDR+Adaptive,1,1,0.5849,0.0000,58.49±0.00,paper_cifar10_3task_beta10_cbdr_adaptive_reply_seed1
+cifar10,3,1.0,Exemplar-based Replay,3,"1,2,3",0.4490,0.0833,44.90±8.33,paper_cifar10_3task_beta10_local_replay_seed1;paper_cifar10_3task_beta10_local_replay_seed2;paper_cifar10_3task_beta10_local_replay_seed3
+cifar10,3,1.0,Finetune,3,"1,2,3",0.2801,0.0057,28.01±0.57,paper_cifar10_3task_beta10_finetune_seed1;paper_cifar10_3task_beta10_finetune_seed2;paper_cifar10_3task_beta10_finetune_seed3
+cifar10,5,0.5,+GDR,2,"1,2",0.5263,0.0561,52.63±5.61,paper_cifar10_5task_beta05_local_replay_gdr_paper_seed1;paper_cifar10_5task_beta05_local_replay_gdr_paper_seed2
+cifar10,5,0.5,+GDR+TTS,2,"1,2",0.4043,0.0586,40.44±5.86,paper_cifar10_5task_beta05_local_replay_gdr_tts_paper_seed1;paper_cifar10_5task_beta05_local_replay_gdr_tts_paper_seed2
+cifar10,5,0.5,+TTS,2,"1,2",0.2130,0.0024,21.30±0.24,paper_cifar10_5task_beta05_local_replay_tts_seed1;paper_cifar10_5task_beta05_local_replay_tts_seed2
+cifar10,5,0.5,CBDR+Adaptive,1,1,0.5062,0.0000,50.62±0.00,paper_cifar10_5task_beta05_cbdr_adaptive_reply_seed1
+cifar10,5,0.5,Exemplar-based Replay,3,"1,2,3",0.2461,0.0237,24.61±2.37,paper_cifar10_5task_beta05_local_replay_seed1;paper_cifar10_5task_beta05_local_replay_seed2;paper_cifar10_5task_beta05_local_replay_seed3
+cifar10,5,0.5,Finetune,3,"1,2,3",0.1950,0.0027,19.50±0.27,paper_cifar10_5task_beta05_finetune_seed1;paper_cifar10_5task_beta05_finetune_seed2;paper_cifar10_5task_beta05_finetune_seed3
+cifar10,5,1.0,+GDR,2,"1,2",0.5634,0.0281,56.34±2.81,paper_cifar10_5task_beta10_local_replay_gdr_paper_seed1;paper_cifar10_5task_beta10_local_replay_gdr_paper_seed2
+cifar10,5,1.0,+GDR+TTS,2,"1,2",0.3681,0.0072,36.81±0.72,paper_cifar10_5task_beta10_local_replay_gdr_tts_paper_seed1;paper_cifar10_5task_beta10_local_replay_gdr_tts_paper_seed2
+cifar10,5,1.0,+TTS,2,"1,2",0.2311,0.0245,23.11±2.45,paper_cifar10_5task_beta10_local_replay_tts_seed1;paper_cifar10_5task_beta10_local_replay_tts_seed2
+cifar10,5,1.0,CBDR+Adaptive,1,1,0.4799,0.0000,47.99±0.00,paper_cifar10_5task_beta10_cbdr_adaptive_reply_seed1
+cifar10,5,1.0,Exemplar-based Replay,3,"1,2,3",0.2647,0.0409,26.47±4.09,paper_cifar10_5task_beta10_local_replay_seed1;paper_cifar10_5task_beta10_local_replay_seed2;paper_cifar10_5task_beta10_local_replay_seed3
+cifar10,5,1.0,Finetune,3,"1,2,3",0.1930,0.0034,19.30±0.34,paper_cifar10_5task_beta10_finetune_seed1;paper_cifar10_5task_beta10_finetune_seed2;paper_cifar10_5task_beta10_finetune_seed3
+cifar100,5,0.1,+GDR,2,"1,2",0.4039,0.0030,40.39±0.30,paper_cifar100_5task_beta01_local_replay_gdr_paper_seed1;paper_cifar100_5task_beta01_local_replay_gdr_paper_seed2
+cifar100,5,0.1,+GDR+TTS,2,"1,2",0.3237,0.0054,32.37±0.54,paper_cifar100_5task_beta01_local_replay_gdr_tts_paper_seed1;paper_cifar100_5task_beta01_local_replay_gdr_tts_paper_seed2
+cifar100,5,0.1,+TTS,2,"1,2",0.1973,0.0071,19.73±0.71,paper_cifar100_5task_beta01_local_replay_tts_seed1;paper_cifar100_5task_beta01_local_replay_tts_seed2
+cifar100,5,0.1,CBDR+Adaptive,1,1,0.3949,0.0000,39.49±0.00,paper_cifar100_5task_beta01_cbdr_adaptive_reply_seed1
+cifar100,5,0.1,Exemplar-based Replay,3,"1,2,3",0.2321,0.0329,23.21±3.29,paper_cifar100_5task_beta01_local_replay_seed1;paper_cifar100_5task_beta01_local_replay_seed2;paper_cifar100_5task_beta01_local_replay_seed3
+cifar100,5,0.1,Finetune,3,"1,2,3",0.1356,0.0205,13.56±2.05,paper_cifar100_5task_beta01_finetune_seed1;paper_cifar100_5task_beta01_finetune_seed2;paper_cifar100_5task_beta01_finetune_seed3
+cifar100,5,0.5,+GDR,1,1,0.4329,0.0000,43.29±0.00,paper_cifar100_5task_beta05_local_replay_gdr_paper_seed1
+cifar100,5,0.5,+GDR+TTS,1,1,0.3488,0.0000,34.88±0.00,paper_cifar100_5task_beta05_local_replay_gdr_tts_paper_seed1
+cifar100,5,0.5,+TTS,1,1,0.1990,0.0000,19.90±0.00,paper_cifar100_5task_beta05_local_replay_tts_seed1
+cifar100,5,0.5,CBDR+Adaptive,1,1,0.4283,0.0000,42.83±0.00,paper_cifar100_5task_beta05_cbdr_adaptive_reply_seed1
+cifar100,5,0.5,Exemplar-based Replay,3,"1,2,3",0.2284,0.0474,22.84±4.74,paper_cifar100_5task_beta05_local_replay_seed1;paper_cifar100_5task_beta05_local_replay_seed2;paper_cifar100_5task_beta05_local_replay_seed3
+cifar100,5,0.5,Finetune,3,"1,2,3",0.1462,0.0218,14.62±2.18,paper_cifar100_5task_beta05_finetune_seed1;paper_cifar100_5task_beta05_finetune_seed2;paper_cifar100_5task_beta05_finetune_seed3
+cifar100,5,1.0,+GDR,1,1,0.4333,0.0000,43.33±0.00,paper_cifar100_5task_beta10_local_replay_gdr_paper_seed1
+cifar100,5,1.0,+TTS,1,1,0.2184,0.0000,21.84±0.00,paper_cifar100_5task_beta10_local_replay_tts_seed1
+cifar100,5,1.0,CBDR+Adaptive,1,1,0.4323,0.0000,43.23±0.00,paper_cifar100_5task_beta10_cbdr_adaptive_reply_seed1
+cifar100,5,1.0,Exemplar-based Replay,3,"1,2,3",0.2257,0.0412,22.57±4.12,paper_cifar100_5task_beta10_local_replay_seed1;paper_cifar100_5task_beta10_local_replay_seed2;paper_cifar100_5task_beta10_local_replay_seed3
+cifar100,5,1.0,Finetune,3,"1,2,3",0.1466,0.0209,14.66±2.09,paper_cifar100_5task_beta10_finetune_seed1;paper_cifar100_5task_beta10_finetune_seed2;paper_cifar100_5task_beta10_finetune_seed3
+cifar100,10,0.1,+GDR,1,1,0.3190,0.0000,31.90±0.00,paper_cifar100_10task_beta01_local_replay_gdr_paper_seed1
+cifar100,10,0.1,CBDR+Adaptive,1,1,0.3227,0.0000,32.27±0.00,paper_cifar100_10task_beta01_cbdr_adaptive_reply_seed1
+cifar100,10,0.1,Exemplar-based Replay,3,"1,2,3",0.1476,0.0318,14.76±3.18,paper_cifar100_10task_beta01_local_replay_seed1;paper_cifar100_10task_beta01_local_replay_seed2;paper_cifar100_10task_beta01_local_replay_seed3
+cifar100,10,0.1,Finetune,3,"1,2,3",0.0664,0.0087,6.64±0.87,paper_cifar100_10task_beta01_finetune_seed1;paper_cifar100_10task_beta01_finetune_seed2;paper_cifar100_10task_beta01_finetune_seed3
+cifar100,10,0.5,+GDR,1,1,0.3545,0.0000,35.45±0.00,paper_cifar100_10task_beta05_local_replay_gdr_paper_seed1
+cifar100,10,0.5,Exemplar-based Replay,3,"1,2,3",0.1577,0.0208,15.77±2.08,paper_cifar100_10task_beta05_local_replay_seed1;paper_cifar100_10task_beta05_local_replay_seed2;paper_cifar100_10task_beta05_local_replay_seed3
+cifar100,10,0.5,Finetune,3,"1,2,3",0.0773,0.0047,7.73±0.47,paper_cifar100_10task_beta05_finetune_seed1;paper_cifar100_10task_beta05_finetune_seed2;paper_cifar100_10task_beta05_finetune_seed3
+cifar100,10,1.0,+GDR,1,1,0.3602,0.0000,36.02±0.00,paper_cifar100_10task_beta10_local_replay_gdr_paper_seed1
+cifar100,10,1.0,Exemplar-based Replay,3,"1,2,3",0.1558,0.0277,15.58±2.77,paper_cifar100_10task_beta10_local_replay_seed1;paper_cifar100_10task_beta10_local_replay_seed2;paper_cifar100_10task_beta10_local_replay_seed3
+cifar100,10,1.0,Finetune,3,"1,2,3",0.0789,0.0077,7.89±0.77,paper_cifar100_10task_beta10_finetune_seed1;paper_cifar100_10task_beta10_finetune_seed2;paper_cifar100_10task_beta10_finetune_seed3

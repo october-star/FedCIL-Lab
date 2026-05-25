@@ -77,7 +77,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tts_new_weight", type=float, default=0.9)
     parser.add_argument("--kd_lambda", type=float, default=0.0)
     parser.add_argument("--kd_temperature", type=float, default=2.0)
+    parser.add_argument("--use_global_view", type=str2bool, default=True)
     return parser.parse_args()
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in {"true", "1", "yes", "y"}:
+        return True
+    if v.lower() in {"false", "0", "no", "n"}:
+        return False
+    raise argparse.ArgumentTypeError("Boolean value expected.")
+
 
 
 def get_device() -> torch.device:
@@ -170,8 +182,9 @@ def main() -> None:
             ),
             figure_dir=args.figure_dir,
             run_name=run_name,
-            kd_lambda = kd_lambda,
-            kd_temperature = kd_temperature,
+            kd_lambda = args.kd_lambda,
+            kd_temperature = args.kd_temperature,
+            use_global_view= args.use_global_view
         )
     elif args.method == "local_replay_tts":
         method = LocalReplayTTS(

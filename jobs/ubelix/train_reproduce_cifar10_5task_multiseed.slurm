@@ -12,7 +12,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=24G
 
 module purge
 module load Python/3.11
@@ -29,9 +29,9 @@ mkdir -p data/processed
 echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
 echo "Start time: $(date)"
-echo "问题解决实验:GDR Paper  —— 全局视角SVD"
+echo "GDR Paper  —— 全局视角+buffer 300"
 
-for SEED in 1  ; do
+for SEED in 1 2 3 ; do
   python scripts/build_splits.py \
     --dataset cifar10 \
     --num_tasks 5 \

@@ -14,6 +14,7 @@ from src.federated.client import Client
 from src.gdr.features import build_client_feature_payload, sample_orthogonal_matrix
 from src.gdr.server import (
     compute_leverage_scores,
+    compute_client_local_leverage_scores, 
     group_records_by_client,
     sample_records_by_class_probability,
 )
@@ -121,6 +122,7 @@ class LocalReplayGDRPaper(BaseMethod):
         # Add Kd
         kd_lambda: float = 0.0,
         kd_temperature: float = 2.0,
+        use_global_view: bool = True, 
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -138,10 +140,12 @@ class LocalReplayGDRPaper(BaseMethod):
         self.kd_lambda = kd_lambda
         self.kd_temperature = kd_temperature
         self.teacher_model = None
+        self.use_global_view = use_global_view
 
     def train(self) -> dict:
         print("Start Federated Local Replay + GDR (paper branch)...")
         print(f"[KD] lambda={self.kd_lambda}")
+        print(f"[Global View] use_global_view={self.use_global_view}")
         history = {
             "method": self.method_name,
             "buffer_size": self.buffer_size,
@@ -356,18 +360,56 @@ class LocalReplayGDRPaper(BaseMethod):
                 )
             )
 
-        result = compute_leverage_scores(
-            payloads,
-            rank=self.gdr_rank,
-            class_wise=False,
-        )
+        # result = compute_leverage_scores(
+        #     payloads,
+        #     rank=self.gdr_rank,
+        #     class_wise=False,
+        # )
         total_budget = self._global_sampling_budget(new_classes)
-        selected_records = sample_records_by_class_probability(
-            result.records,
-            total_budget=total_budget,
-            seed=self.seed + task_id,
-        )
-        selected_records_by_client = group_records_by_client(selected_records)
+
+        if self.use_global_view:
+            # === (CIFAR100) ===
+            result = compute_leverage_scores(
+                payloads,
+                rank=self.gdr_rank,
+                class_wise=False,
+            )
+            selected_records = sample_records_by_class_probability(
+                result.records,
+                total_budget=total_budget,
+                seed=self.seed + task_id,
+            )
+            selected_records_by_client = group_records_by_client(selected_records)
+            singular_values = result.singular_values
+            client_singular_values = None
+            selection_mode = "global_class_balanced_sampling"
+        else:
+            # === (CIFAR10) ===
+            result = compute_client_local_leverage_scores(
+                payloads,
+                rank=self.gdr_rank,
+            )
+            per_client_budgets = self._per_client_sampling_budgets(total_budget)
+            records_by_client = group_records_by_client(result.records)
+            selected_records = []
+            selected_records_by_client = {}
+            for client_id in range(self.num_clients):
+                sel = sample_records_by_class_probability(
+                    records_by_client.get(client_id, []),
+                    total_budget=per_client_budgets.get(client_id, 0),
+                    seed=self.seed + task_id * 1000 + client_id,
+                )
+                selected_records_by_client[client_id] = sel
+                selected_records.extend(sel)
+            singular_values = []
+            client_singular_values = result.client_singular_values
+            selection_mode = "per_client_class_balanced_sampling"
+        # selected_records = sample_records_by_class_probability(
+        #     result.records,
+        #     total_budget=total_budget,
+        #     seed=self.seed + task_id,
+        # )
+        # selected_records_by_client = group_records_by_client(selected_records)
 
         for client_id in range(self.num_clients):
             client_records = selected_records_by_client.get(client_id, [])
@@ -435,13 +477,13 @@ class LocalReplayGDRPaper(BaseMethod):
         return {
             "rank": result.rank,
             "class_wise": False,
-            "singular_values": result.singular_values,
-            "client_singular_values": None,
+            "singular_values": singular_values,
+            "client_singular_values": client_singular_values,
             "class_singular_values": None,
             "num_scored_samples": len(result.records),
             "num_selected_samples": len(selected_records),
             "global_sampling_budget": total_budget,
-            "selection_mode": "global_class_balanced_sampling",
+            "selection_mode": selection_mode,
             "candidate_pool": "current_task_only",
             "encryption": "P_k_X_Q",
             "sampling_weight_formula": "global_class_leverage_probability",

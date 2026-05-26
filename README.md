@@ -1,47 +1,75 @@
 # FedCIL-Lab
 
-Federated Class-Incremental Learning playground built around CIFAR, federated client partitions, replay-based continual learning baselines, GDR sample selection, and TTS stabilization.
+FedCIL-Lab is a research sandbox for federated class-incremental learning (FCIL) on CIFAR-10 and CIFAR-100. It combines class-incremental task construction, federated Dirichlet client partitions, FedAvg training, replay-based continual learning baselines, GDR-style sample selection, TTS stabilization, and an adaptive replay variant for forgetting-aware experiments.
 
-## Overview
+The repository is designed to make it easy to:
 
-This project studies class-incremental learning under a federated setting:
+- build task-wise class splits for CIFAR benchmarks
+- partition each task across federated clients
+- train an incremental classifier with multiple replay variants
+- save per-task experiment histories as JSON
+- aggregate multi-seed results into summary CSV files
 
-- data is split into incremental tasks by class order
-- each task is partitioned across clients
-- a shared incremental classifier is trained with FedAvg
-- replay, GDR, and TTS are added on top as ablations and main methods
+## What Is In This Repo
 
-Current implemented stages:
+- `scripts/prepare_data.py`: download and sanity-check CIFAR datasets
+- `scripts/build_splits.py`: create fixed class orders and class-incremental task splits
+- `scripts/build_federated_partitions.py`: create per-task client partitions with a Dirichlet distribution
+- `scripts/train.py`: main training entrypoint
+- `scripts/summarize_results.py`: flatten result JSON files into a CSV summary
+- `scripts/aggregate_mean_std.py`: compute grouped mean/std summaries across runs
+- `src/models/incremental_model.py`: ResNet18-based expandable classifier
+- `src/methods/`: FCIL training methods and research variants
 
-1. `finetune`: federated finetune baseline
-2. `local_replay`: per-client replay buffer baseline
-3. `local_replay_gdr`: replay + GDR sample selection
-4. `local_replay_tts`: replay + TTS
-5. `local_replay_gdr_tts`: replay + GDR + TTS
+## Method IDs
 
-## Project Layout
+The source of truth for supported methods is `scripts/train.py`.
+
+| CLI value | Description |
+| --- | --- |
+| `finetune` | No replay, trains only on the current task |
+| `local_replay` | Per-client replay buffer baseline |
+| `local_replay_gdr_paper` | Paper-style GDR replay variant |
+| `local_replay_tts` | Replay with task-wise temperature scaling |
+| `local_replay_gdr_tts_paper` | Paper-style GDR + TTS variant |
+| `cbdr_adaptive_reply` | Adaptive replay variant with KL-forgetting logic |
+
+Notes:
+
+- `cbdr_adaptive_reply` is spelled `reply` in the current CLI and code; use that exact string when launching runs.
+- Some research scripts currently focus on the `*_paper` and adaptive variants rather than every baseline.
+
+## Repository Layout
 
 ```text
 src/
-  data/         CIFAR loading, task split building, federated dataset manager
-  federated/    client training and FedAvg aggregation
-  gdr/          pseudo features, server SVD, leverage score, plotting
-  methods/      training methods and ablations
-  models/       incremental backbone + expandable classifier head
-  replay/       replay buffer
-  tts/          task-wise temperature scaling loss
+  data/         CIFAR loading, task splits, federated partitions, dataset wrappers
+  federated/    local client training and FedAvg aggregation
+  gdr/          feature extraction, server-side leverage computation, visualization
+  kd/           knowledge distillation loss helpers
+  methods/      finetune, replay, GDR, TTS, paper variants, adaptive replay
+  models/       incremental backbone with expandable classifier head
+  replay/       replay buffer and selection datasets
+  tts/          task-wise temperature scaling losses
+  utils/        KL-forgetting utilities
 
 scripts/
-  prepare_data.py                dataset sanity check
-  build_splits.py                build class-incremental task splits
-  build_federated_partitions.py  build per-client partitions
-  visualize_partition.py         visualize class distribution
-  train.py                       main training entry
+  prepare_data.py
+  build_splits.py
+  build_federated_partitions.py
+  visualize_partition.py
+  train.py
+  summarize_results.py
+  aggregate_mean_std.py
+
+jobs/
+  local/        local experiment launchers
+  ubelix/       cluster launchers
 ```
 
-## Environment
+## Environment Setup
 
-Recommended: Python 3.11 with a virtual environment.
+Recommended environment: Python 3.11 in a virtual environment.
 
 ```bash
 python -m venv .venv
@@ -49,7 +77,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Device selection in training:
+If you need a specific CUDA build of PyTorch, install the matching wheel before or instead of the default `requirements.txt` flow.
+
+Device selection during training is automatic:
 
 - CUDA if available
 - otherwise MPS on Apple Silicon
@@ -57,30 +87,33 @@ Device selection in training:
 
 ## Data Preparation
 
-### 1. Download and inspect CIFAR
+### 1. Download CIFAR and verify the files
 
 ```bash
-python scripts/prepare_data.py
+python scripts/prepare_data.py --dataset all
 ```
 
-This downloads CIFAR into `data/raw/` and prints basic label statistics.
+This downloads CIFAR into `data/raw/` and prints dataset statistics.
 
 ### 2. Build class-incremental task splits
 
-Example for CIFAR-10 with 5 tasks and seed 1:
+Example: CIFAR-10, 5 tasks, seed 1.
 
 ```bash
-python scripts/build_splits.py --dataset cifar10 --num_tasks 5 --seed 1
+python scripts/build_splits.py \
+  --dataset cifar10 \
+  --num_tasks 5 \
+  --seed 1
 ```
 
-This creates:
+Artifacts are written to:
 
-- `data/processed/class_orders/...`
-- `data/processed/task_splits/...`
+- `data/processed/class_orders/`
+- `data/processed/task_splits/`
 
 ### 3. Build federated client partitions
 
-Example:
+Example: 5 clients with Dirichlet `beta=0.5`.
 
 ```bash
 python scripts/build_federated_partitions.py \
@@ -91,11 +124,11 @@ python scripts/build_federated_partitions.py \
   --seed 1
 ```
 
-This creates:
+Artifacts are written to:
 
-- `data/processed/federated_partitions/...`
+- `data/processed/federated_partitions/`
 
-### 4. Optional: visualize class distribution
+### 4. Optional: visualize class distributions
 
 ```bash
 python scripts/visualize_partition.py \
@@ -107,166 +140,243 @@ python scripts/visualize_partition.py \
 
 Plots are saved under `outputs/figures/data_distribution/`.
 
-## Training
+## Quick Start
 
-Main entry:
+The following example uses:
 
-```bash
-python scripts/train.py --method <method_name>
-```
+- dataset: `cifar10`
+- tasks: `5`
+- clients: `5`
+- beta: `0.5`
+- seed: `1`
 
-Common arguments:
-
-```text
---dataset
---task_split_path
---partition_path
---num_clients
---rounds
---local_epochs
---batch_size
---lr
---buffer_size
---samples_per_task
---seed
---run_name
---save_checkpoint
---no_download
-```
-
-### 1. Finetune baseline
+First prepare the split and partition:
 
 ```bash
-python scripts/train.py \
-  --method finetune \
-  --run_name finetune_seed1_beta05 \
-  --no_download
+python scripts/build_splits.py --dataset cifar10 --num_tasks 5 --seed 1
+python scripts/build_federated_partitions.py --dataset cifar10 --num_tasks 5 --num_clients 5 --beta 0.5 --seed 1
 ```
 
-### 2. Replay baseline
+Then launch a run:
 
 ```bash
 python scripts/train.py \
   --method local_replay \
-  --buffer_size 200 \
-  --samples_per_task 50 \
-  --run_name local_replay_seed1_beta05 \
+  --dataset cifar10 \
+  --task_split_path data/processed/task_splits/cifar10_5task_seed1.json \
+  --partition_path data/processed/federated_partitions/cifar10_5task_5clients_beta05_seed1.json \
+  --num_clients 5 \
+  --rounds 100 \
+  --local_epochs 2 \
+  --batch_size 128 \
+  --buffer_size 300 \
+  --samples_per_task 60 \
+  --seed 1 \
+  --run_name demo_cifar10_replay \
   --no_download
 ```
 
-### 3. Replay + GDR
+## Training Recipes
+
+### Finetune baseline
+
+```bash
+python scripts/train.py \
+  --method finetune \
+  --dataset cifar10 \
+  --task_split_path data/processed/task_splits/cifar10_5task_seed1.json \
+  --partition_path data/processed/federated_partitions/cifar10_5task_5clients_beta05_seed1.json \
+  --num_clients 5 \
+  --rounds 100 \
+  --local_epochs 2 \
+  --batch_size 128 \
+  --seed 1 \
+  --run_name demo_finetune \
+  --no_download
+```
+
+### Replay baseline
+
+```bash
+python scripts/train.py \
+  --method local_replay \
+  --dataset cifar10 \
+  --task_split_path data/processed/task_splits/cifar10_5task_seed1.json \
+  --partition_path data/processed/federated_partitions/cifar10_5task_5clients_beta05_seed1.json \
+  --num_clients 5 \
+  --rounds 100 \
+  --local_epochs 2 \
+  --batch_size 128 \
+  --buffer_size 300 \
+  --samples_per_task 60 \
+  --seed 1 \
+  --run_name demo_replay \
+  --no_download
+```
+
+### Replay + GDR
 
 ```bash
 python scripts/train.py \
   --method local_replay_gdr \
-  --buffer_size 200 \
-  --samples_per_task 50 \
+  --dataset cifar10 \
+  --task_split_path data/processed/task_splits/cifar10_5task_seed1.json \
+  --partition_path data/processed/federated_partitions/cifar10_5task_5clients_beta05_seed1.json \
+  --num_clients 5 \
+  --rounds 100 \
+  --local_epochs 2 \
+  --batch_size 128 \
+  --buffer_size 300 \
+  --samples_per_task 60 \
   --gdr_rank 8 \
-  --gdr_feature_samples 500 \
-  --run_name local_replay_gdr_backbonegdr_seed1_beta05 \
+  --seed 1 \
+  --run_name demo_replay_gdr \
   --no_download
 ```
 
-Additional GDR arguments:
-
-```text
---gdr_rank
---gdr_feature_samples
---figure_dir
-```
-
-`local_replay_gdr` now extracts GDR scores from backbone features by default. Use a
-distinct `run_name` such as `backbonegdr` if you want to keep older pseudo-feature
-results for comparison.
-
-### 4. Replay + TTS
+### Replay + TTS
 
 ```bash
 python scripts/train.py \
   --method local_replay_tts \
-  --buffer_size 200 \
-  --samples_per_task 50 \
-  --tts_old_temp 2.0 \
-  --tts_new_temp 1.0 \
-  --tts_old_weight 1.5 \
-  --tts_new_weight 1.0 \
-  --run_name local_replay_tts_seed1_beta05 \
+  --dataset cifar10 \
+  --task_split_path data/processed/task_splits/cifar10_5task_seed1.json \
+  --partition_path data/processed/federated_partitions/cifar10_5task_5clients_beta05_seed1.json \
+  --num_clients 5 \
+  --rounds 100 \
+  --local_epochs 2 \
+  --batch_size 128 \
+  --buffer_size 300 \
+  --samples_per_task 60 \
+  --tts_old_temp 0.9 \
+  --tts_new_temp 1.1 \
+  --tts_old_weight 1.1 \
+  --tts_new_weight 0.9 \
+  --seed 1 \
+  --run_name demo_replay_tts \
   --no_download
 ```
 
-### 5. Replay + GDR + TTS
+### Paper-style GDR with KD enabled
 
 ```bash
 python scripts/train.py \
-  --method local_replay_gdr_tts \
-  --buffer_size 200 \
-  --samples_per_task 50 \
+  --method local_replay_gdr_paper \
+  --dataset cifar10 \
+  --task_split_path data/processed/task_splits/cifar10_5task_seed1.json \
+  --partition_path data/processed/federated_partitions/cifar10_5task_5clients_beta05_seed1.json \
+  --num_clients 5 \
+  --rounds 100 \
+  --local_epochs 2 \
+  --batch_size 128 \
+  --buffer_size 450 \
+  --samples_per_task 90 \
   --gdr_rank 8 \
-  --tts_old_temp 2.0 \
-  --tts_new_temp 1.0 \
-  --tts_old_weight 1.5 \
-  --tts_new_weight 1.0 \
-  --run_name local_replay_gdr_tts_backbonegdr_seed1_beta05 \
+  --kd_lambda 1.0 \
+  --kd_temperature 2.0 \
+  --seed 1 \
+  --run_name demo_replay_gdr_kd_paper \
   --no_download
 ```
 
-Additional TTS arguments:
+### Adaptive replay smoke run
 
-```text
---tts_old_temp
---tts_new_temp
---tts_old_weight
---tts_new_weight
+```bash
+python scripts/train.py \
+  --method cbdr_adaptive_reply \
+  --dataset cifar10 \
+  --task_split_path data/processed/task_splits/cifar10_5task_seed1.json \
+  --partition_path data/processed/federated_partitions/cifar10_5task_5clients_beta05_seed1.json \
+  --num_clients 5 \
+  --rounds 20 \
+  --local_epochs 2 \
+  --batch_size 128 \
+  --buffer_size 450 \
+  --samples_per_task 90 \
+  --gdr_rank 8 \
+  --adaptive_replay \
+  --adaptive_replay_gamma 2.0 \
+  --adaptive_replay_min_weight 0.5 \
+  --adaptive_replay_max_weight 2.0 \
+  --replay_sampling_mass 0.5 \
+  --kl_temperature 2.0 \
+  --kl_max_samples_per_class 100 \
+  --seed 1 \
+  --run_name demo_cbdr_smoke \
+  --no_download
 ```
 
-## Implemented Methods
+## Important Training Arguments
 
-### Finetune
+Common arguments:
 
-- expands classifier head when new task classes arrive
-- trains only on current-task client data
-- evaluates on all seen classes
+- `--dataset`: `cifar10` or `cifar100`
+- `--task_split_path`: JSON produced by `scripts/build_splits.py`
+- `--partition_path`: JSON produced by `scripts/build_federated_partitions.py`
+- `--num_clients`: number of federated clients
+- `--rounds`: FedAvg rounds per task
+- `--local_epochs`: local client epochs per round
+- `--batch_size`
+- `--lr`
+- `--run_name`
+- `--save_checkpoint`
+- `--no_download`
 
-### Replay
+Replay-related arguments:
 
-- each client owns a replay buffer
-- current task data and local replay data are concatenated for training
-- buffer class counts are tracked in training results
+- `--buffer_size`
+- `--samples_per_task`
 
-### GDR
+GDR-related arguments:
 
-- constructs lightweight pseudo features from raw images
-- server aggregates client features and runs SVD
-- leverage scores are computed per sample
-- replay insertion uses class-balanced, leverage-guided selection
-- plots are saved for leverage scores and final buffer distribution
+- `--gdr_rank`
+- `--gdr_feature_samples`
+- `--gdr_class_wise` or `--no-gdr_class_wise`
+- `--figure_dir`
 
-### TTS
+TTS-related arguments:
 
-- logits are split into old-class and new-class groups
-- each group is temperature-scaled independently
-- sample losses for old and new classes are reweighted separately
+- `--tts_old_temp`
+- `--tts_new_temp`
+- `--tts_old_weight`
+- `--tts_new_weight`
+
+KD and adaptive replay arguments:
+
+- `--kd_lambda`
+- `--kd_temperature`
+- `--use_global_view`
+- `--adaptive_replay`
+- `--adaptive_replay_gamma`
+- `--adaptive_replay_min_weight`
+- `--adaptive_replay_max_weight`
+- `--replay_sampling_mass`
+- `--kl_temperature`
+- `--kl_max_samples_per_class`
+
+Current backbone support is intentionally narrow:
+
+- `--backbone resnet18`
 
 ## Outputs
 
 ### Result JSON
 
-Training results are saved to:
+Each run writes a JSON payload to:
 
 ```text
 outputs/results/<run_name>.json
 ```
 
-Each result file stores:
+The payload stores:
 
 - run name
 - training config
-- device
-- per-task metrics
-- final buffer statistics
-- GDR metadata and figure paths when applicable
+- selected device
+- per-task and per-round histories
+- replay, GDR, or TTS metadata when applicable
 
-### Model checkpoint
+### Checkpoints
 
 If `--save_checkpoint` is enabled:
 
@@ -276,147 +386,97 @@ outputs/results/<run_name>.pt
 
 ### Figures
 
-GDR-related plots are saved to:
+GDR-related visualizations are typically written to:
 
 ```text
 outputs/figures/gdr/
 ```
 
-Typical files:
+### Summary CSV files
 
-- `..._task0_leverage.png`
-- `..._task0_buffer_distribution.png`
+Direct script usage:
 
-### Matplotlib cache
-
-The project sets Matplotlib's cache/config directory to:
-
-```text
-outputs/.matplotlib/
+```bash
+python scripts/summarize_results.py
+python scripts/aggregate_mean_std.py
 ```
 
-This is only runtime cache, not experiment output.
+Default outputs:
 
-## Important Implementation Notes
+- `outputs/results/summary.csv`
+- `outputs/results/mean_std_summary.csv`
+
+The local wrapper scripts currently use:
+
+- `jobs/local/summarize_results.sh` -> `outputs/results/summary_two.csv`
+- `jobs/local/aggregate_reproduce_mean_std.sh` -> `outputs/results/reproduce_core_mean_std_summary.csv`
+
+### Standalone plotting helper
+
+`plot_fedcil_results.py` is a standalone figure script with baked-in numbers. It writes PNG files into `output/`, not `outputs/`.
+
+## Experiment Scripts
+
+### Reproduction preparation
+
+Build common multi-seed assets for CIFAR-10 5-task and CIFAR-100 10-task setups:
+
+```bash
+bash jobs/local/prepare_reproduce_multiseed.sh
+```
+
+### Current reproduction launchers
+
+```bash
+bash jobs/local/run_reproduce_cifar10_5task_KD_multiseed.sh
+bash jobs/local/run_reproduce_cifar100_10task_KD_multiseed.sh
+```
+
+These scripts currently target the paper-style GDR branch with KD enabled.
+
+### Aggregate reproduction summaries
+
+```bash
+bash jobs/local/aggregate_reproduce_mean_std.sh
+```
+
+### Adaptive replay smoke test
+
+```bash
+bash jobs/local/run_kl_adaptive_smoke.sh
+```
+
+### Paper sweep helpers
+
+The `jobs/local/run_paper_all_settings*.sh` scripts are research-oriented launchers for broader sweeps. They contain commented sections and tunable constants, so inspect them before starting long runs.
+
+## Implementation Notes
 
 ### Label remapping
 
-Task splits keep original CIFAR labels, but training uses remapped incremental labels so the expandable classifier head always sees contiguous targets:
+Task splits keep the original CIFAR labels, but training remaps all seen classes to contiguous indices for the expandable head. This logic lives in `src/data/federated_dataset.py`.
 
-- task 0 classes `[6, 8]` become labels `[0, 1]`
-- task 1 old/new seen classes continue as contiguous indices
+### Incremental classifier growth
 
-This logic lives in [src/data/federated_dataset.py](/Users/octobercity/Desktop/project/FedCIL-Lab/src/data/federated_dataset.py).
+The model starts without a classifier head and expands the output layer whenever a new task arrives. This logic lives in `src/models/incremental_model.py`.
 
-### BatchNorm stability
+### Small-client stability
 
-Client training uses `drop_last=True` and skips subsets smaller than 2 samples to avoid BatchNorm failures on singleton batches.
+Client subsets that are too small for stable BatchNorm behavior are skipped during training in the replay pipelines.
 
-### Replay buffer contents
+### Research-script drift
 
-Replay buffers store:
+This repository is an active research workspace. A few helper scripts are older than the newest method naming or experiment focus. In particular, prefer the explicit `run_reproduce_*_KD_multiseed.sh` launchers over the older wrapper scripts when you want the current reproduction flow.
 
-- image tensor
-- remapped label
-- metadata such as task id, client id, dataset index
+## Suggested Workflow
 
-For GDR, metadata also includes leverage scores.
+For a clean end-to-end run:
 
-## Typical Workflow
+1. Create the environment and install dependencies.
+2. Download CIFAR with `scripts/prepare_data.py`.
+3. Build a task split with `scripts/build_splits.py`.
+4. Build a federated partition with `scripts/build_federated_partitions.py`.
+5. Train one or more methods with `scripts/train.py`.
+6. Summarize outputs with `scripts/summarize_results.py` and `scripts/aggregate_mean_std.py`.
 
-```bash
-python scripts/prepare_data.py
-python scripts/build_splits.py --dataset cifar10 --num_tasks 5 --seed 1
-python scripts/build_federated_partitions.py --dataset cifar10 --num_tasks 5 --num_clients 5 --beta 0.5 --seed 1
-python scripts/train.py --method local_replay --run_name replay_seed1_beta05 --no_download
-python scripts/train.py --method local_replay_tts --run_name replay_tts_seed1_beta05 --no_download
-python scripts/train.py --method local_replay_gdr --run_name replay_gdr_backbonegdr_seed1_beta05 --no_download
-python scripts/train.py --method local_replay_gdr_tts --run_name replay_gdr_tts_backbonegdr_seed1_beta05 --no_download
-```
-
-## Sequential Execution —— Core Experiment Table
-
-For the full CIFAR-100 core experiment pipeline with 3 seeds, run the following steps in order:
-
-### 1. Prepare multi-seed task splits and federated partitions
-
-```bash
-bash jobs/local/prepare_multiseed_cifar100.sh
-```
-
-This generates:
-
-- CIFAR-100 task splits for `seed = 1, 2, 3`
-- federated partitions for `beta = 0.1` and `beta = 0.5`
-
-### 2. Run all core experiments
-
-```bash
-bash jobs/local/run_core_all_multiseed.sh
-```
-
-This runs the 8 core configurations for each seed:
-
-- `local_replay`
-- `local_replay_tts`
-- `local_replay_gdr` (saved with `backbonegdr` in the run name)
-- `local_replay_gdr_tts` (saved with `backbonegdr` in the run name)
-
-under:
-
-- `beta = 0.1`
-- `beta = 0.5`
-
-with:
-
-- `buffer_size = 500`
-- `rounds = 100`
-
-### 3. Summarize all result JSON files
-
-```bash
-bash jobs/local/summarize_results.sh
-```
-
-This collects `outputs/results/*.json` into:
-
-```text
-outputs/results/summary.csv
-```
-
-### Recommended full order
-
-```bash
-bash jobs/local/prepare_multiseed_cifar100.sh
-bash jobs/local/run_core_all_multiseed.sh
-bash jobs/local/summarize_results.sh
-```
-
-## Ablation Suggestions
-
-To compare stage-by-stage effects, run:
-
-1. `finetune`
-2. `local_replay`
-3. `local_replay_tts`
-4. `local_replay_gdr`
-5. `local_replay_gdr_tts`
-
-This gives a clean view of:
-
-- replay gain over finetune
-- TTS gain over replay
-- GDR gain over replay
-- combined gain of GDR + TTS
-
-## Status
-
-Implemented and smoke-tested:
-
-- finetune baseline
-- replay baseline
-- replay + GDR
-- replay + TTS
-- replay + GDR + TTS
-
-For full experiments, use consistent seeds, save all result JSON files, and compare the final seen accuracy and buffer statistics across runs.
+That gives you a minimal but complete FCIL experiment loop from raw CIFAR data to summary tables.

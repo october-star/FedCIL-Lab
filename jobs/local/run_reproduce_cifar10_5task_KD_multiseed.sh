@@ -71,24 +71,6 @@ for SEED in 1 2 3 ; do
   # --run_name "0524-1-reproduce_core_cifar10_5task_beta05_replay_gdr_paper_buf450_seed${SEED}" \
   # --no_download
 
-  python scripts/train.py \
-  --method local_replay_gdr_paper \
-  --dataset cifar10 \
-  --task_split_path "$TASK_SPLIT" \
-  --partition_path "$PARTITION" \
-  --num_clients 5 \
-  --batch_size 128 \
-  --local_epochs 2 \
-  --rounds 100 \
-  --buffer_size 300 \
-  --samples_per_task 60 \
-  --gdr_rank 8 \
-  --seed "$SEED" \
-  --run_name "0525-report-reproduce_core_cifar10_5task_beta05_replay_gdr_paper_buf300_Global_seed${SEED}" \
-  --kd_lambda 0.0 \
-  --kd_temperature 2.0 \
-  --no_download
-
   # python scripts/train.py \
   # --method local_replay_gdr_paper \
   # --dataset cifar10 \
@@ -98,15 +80,32 @@ for SEED in 1 2 3 ; do
   # --batch_size 128 \
   # --local_epochs 2 \
   # --rounds 100 \
-  # --buffer_size 450 \
-  # --samples_per_task 90 \
+  # --buffer_size 300 \
+  # --samples_per_task 60 \
   # --gdr_rank 8 \
   # --seed "$SEED" \
-  # --run_name "0525-report-reproduce_core_cifar10_5task_beta05_replay_gdr_KD_paper_buf450_No_Global_seed${SEED}" \
-  # --kd_lambda 1.0 \
+  # --run_name "report-reproduce_core_cifar10_5task_beta05_replay_gdr_paper_buf300_Global_seed${SEED}" \
+  # --kd_lambda 0.0 \
   # --kd_temperature 2.0 \
-  # --use_global_view False \
   # --no_download
+
+  python scripts/train.py \
+  --method local_replay_gdr_paper \
+  --dataset cifar10 \
+  --task_split_path "$TASK_SPLIT" \
+  --partition_path "$PARTITION" \
+  --num_clients 5 \
+  --batch_size 128 \
+  --local_epochs 2 \
+  --rounds 100 \
+  --buffer_size 450 \
+  --samples_per_task 90 \
+  --gdr_rank 8 \
+  --seed "$SEED" \
+  --run_name "report-reproduce_core_cifar10_5task_beta05_replay_gdr_KD_paper_buf450_seed${SEED}" \
+  --kd_lambda 1.0 \
+  --kd_temperature 2.0 \
+  --no_download
 
 
   # python scripts/train.py \

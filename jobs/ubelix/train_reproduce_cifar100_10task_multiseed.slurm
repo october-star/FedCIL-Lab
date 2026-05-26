@@ -29,7 +29,6 @@ mkdir -p data/processed
 echo "Running on node: $(hostname)"
 echo "Python: $(which python)"
 echo "Start time: $(date)"
-echo "GDR + tts Paper —— 全局视角测试"
 
 
 for SEED in 1 2 3 ; do
@@ -46,6 +45,6 @@ for SEED in 1 2 3 ; do
     --seed "$SEED"
 done
 
-bash jobs/local/run_reproduce_cifar100_10task_multiseed.sh
+bash jobs/local/run_reproduce_cifar100_10task_KD_multiseed.sh
 
 echo "Finished time: $(date)"

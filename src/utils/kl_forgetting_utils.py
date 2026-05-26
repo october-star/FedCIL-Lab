@@ -32,14 +32,14 @@ def compute_class_kl_forgetting(
     temperature: float = 2.0,
     max_samples_per_class: int = 100,
 ) -> dict[int, float]:
-    # 关掉 dropout / BN 更新 只测试，不训练
+    
     teacher_model.eval()
     student_model.eval()
 
-    # 按 class 收集 replay 样本。
+    
     samples_by_class: dict[int, list[torch.Tensor]] = defaultdict(list)
 
-    # 按类划分数据
+
     # samples_by_class =
     # {
     #     dog: [x1, x2],
@@ -62,7 +62,7 @@ def compute_class_kl_forgetting(
 
     scores: dict[int, float] = {}
 
-    # 计算 temperature是为了变平滑
+    
     for class_id, xs in samples_by_class.items():
         if not xs:
             continue

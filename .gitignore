@@ -3,6 +3,7 @@ data/raw
 data/processed
 .venv
 outputs/
+
 *.pt
 *.pyc
 
